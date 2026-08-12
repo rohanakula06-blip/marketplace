@@ -25,15 +25,26 @@ function getPosition(options: PositionOptions): Promise<GeoCoords> {
           lng: pos.coords.longitude,
           accuracy: pos.coords.accuracy,
         }),
-      reject,
+      (err) => reject(err),
       options
     );
   });
 }
 
-/**
- * Best-effort precise GPS: watch position briefly and keep the most accurate reading.
- */
+function geolocationErrorMessage(err: GeolocationPositionError): string {
+  switch (err.code) {
+    case 1:
+      return 'Location permission denied. Click the lock icon in your browser address bar → Allow location, then try again.';
+    case 2:
+      return 'Location unavailable. Turn on Location Services (Windows Settings → Privacy → Location) or search your area manually.';
+    case 3:
+      return 'Location timed out. Move near a window, try on your phone, or search for your area manually.';
+    default:
+      return 'Unable to get your location. Try again or search for your area manually.';
+  }
+}
+
+/** Reliable GPS: try high-accuracy first, then fall back. Works on mobile + desktop. */
 export async function getCurrentPositionAsync(): Promise<GeoCoords> {
   if (typeof navigator === 'undefined' || !navigator.geolocation) {
     throw new Error('Geolocation is not supported by your browser');
@@ -42,65 +53,34 @@ export async function getCurrentPositionAsync(): Promise<GeoCoords> {
     throw new Error('Location requires HTTPS. Open the site via https:// or localhost.');
   }
 
-  return new Promise((resolve, reject) => {
-    let best: GeoCoords | null = null;
-    let settled = false;
+  try {
+    const permission = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+    if (permission.state === 'denied') {
+      throw new Error(geolocationErrorMessage({ code: 1 } as GeolocationPositionError));
+    }
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('permission')) throw err;
+    // permissions API not supported — continue
+  }
 
-    const finish = (result: GeoCoords) => {
-      if (settled) return;
-      settled = true;
-      navigator.geolocation.clearWatch(watchId);
-      clearTimeout(timer);
-      resolve(result);
-    };
+  const attempts: PositionOptions[] = [
+    { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 120000 },
+    { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 },
+  ];
 
-    const fail = (err: GeolocationPositionError) => {
-      if (settled) return;
-      if (best) {
-        finish(best);
-        return;
-      }
-      settled = true;
-      navigator.geolocation.clearWatch(watchId);
-      clearTimeout(timer);
-      const msg =
-        err.code === 1
-          ? 'Location permission denied. Allow location in browser settings or pick your area manually.'
-          : 'Unable to get your location. Try again or search for your area manually.';
-      reject(new Error(msg));
-    };
+  let lastError: GeolocationPositionError | null = null;
 
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        const reading: GeoCoords = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy: pos.coords.accuracy,
-        };
-        if (!best || (reading.accuracy ?? Infinity) < (best.accuracy ?? Infinity)) {
-          best = reading;
-        }
-        if (reading.accuracy != null && reading.accuracy <= 80) {
-          finish(reading);
-        }
-      },
-      fail,
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }
-    );
+  for (const options of attempts) {
+    try {
+      return await getPosition(options);
+    } catch (err) {
+      lastError = err as GeolocationPositionError;
+      if (lastError.code === 1) break;
+    }
+  }
 
-    const timer = setTimeout(() => {
-      if (best) finish(best);
-      else {
-        getPosition({ enableHighAccuracy: true, timeout: 5000, maximumAge: 0 })
-          .then(finish)
-          .catch(() =>
-            getPosition({ enableHighAccuracy: false, timeout: 8000, maximumAge: 0 })
-              .then(finish)
-              .catch(fail)
-          );
-      }
-    }, 12000);
-  });
+  throw new Error(geolocationErrorMessage(lastError ?? ({ code: 0 } as GeolocationPositionError)));
 }
 
 export async function detectCurrentLocation(): Promise<GeoLocation> {
@@ -185,15 +165,8 @@ export async function geocodeAddressWithLabel(query: string): Promise<GeoLocatio
   }
 }
 
-export const CITY_COORDS: Record<string, GeoCoords> = {
-  'Konaseema, Andhra Pradesh': { lat: 16.579, lng: 82.006 },
-  'Amalapuram, Konaseema': { lat: 16.5787, lng: 82.0061 },
-  'Rajahmundry, Andhra Pradesh': { lat: 17.0005, lng: 81.804 },
-  'Kakinada, Andhra Pradesh': { lat: 16.9891, lng: 82.2471 },
-  'Hyderabad, Telangana': { lat: 17.385, lng: 78.4867 },
-  'Bangalore, Karnataka': { lat: 12.9716, lng: 77.5946 },
-  'Mumbai, Maharashtra': { lat: 19.076, lng: 72.8777 },
-  'Delhi NCR': { lat: 28.6139, lng: 77.209 },
-  'Chennai, Tamil Nadu': { lat: 13.0827, lng: 80.2707 },
-  'Pune, Maharashtra': { lat: 18.5204, lng: 73.8567 },
-};
+import { POPULAR_CITIES } from './location-utils';
+
+export const CITY_COORDS: Record<string, GeoCoords> = Object.fromEntries(
+  POPULAR_CITIES.map((c) => [c.label, { lat: c.lat, lng: c.lng }])
+);

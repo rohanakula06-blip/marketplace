@@ -1,19 +1,36 @@
-import { DEMO_COORDS } from './constants';
-
 /** Konaseema (east AP) — Amalapuram, Rajahmundry. Krishna/Gudivada is west (~80.9°E). */
 export const KONASEEMA_MIN_LNG = 81.55;
 
+export const DEMO_COORDS = { lat: 16.579, lng: 82.006 };
+
 export type KnownCity = { label: string; lat: number; lng: number };
 
-export const KNOWN_CITIES: KnownCity[] = [
+/** Quick-select cities shown in the location picker (works anywhere in India via GPS/search too). */
+export const POPULAR_CITIES: KnownCity[] = [
   { label: 'Amalapuram, Konaseema', lat: 16.5787, lng: 82.0061 },
   { label: 'Konaseema, Andhra Pradesh', lat: 16.579, lng: 82.006 },
   { label: 'Rajahmundry, Andhra Pradesh', lat: 17.0005, lng: 81.804 },
   { label: 'Kakinada, Andhra Pradesh', lat: 16.9891, lng: 82.2471 },
-  { label: 'Hyderabad, Telangana', lat: 17.385, lng: 78.4867 },
-  { label: 'Gudivada, Krishna', lat: 16.4355, lng: 80.9925 },
+  { label: 'Visakhapatnam, Andhra Pradesh', lat: 17.6868, lng: 83.2185 },
   { label: 'Vijayawada, Andhra Pradesh', lat: 16.5062, lng: 80.648 },
+  { label: 'Hyderabad, Telangana', lat: 17.385, lng: 78.4867 },
+  { label: 'Bangalore, Karnataka', lat: 12.9716, lng: 77.5946 },
+  { label: 'Chennai, Tamil Nadu', lat: 13.0827, lng: 80.2707 },
+  { label: 'Mumbai, Maharashtra', lat: 19.076, lng: 72.8777 },
+  { label: 'Delhi NCR', lat: 28.6139, lng: 77.209 },
+  { label: 'Pune, Maharashtra', lat: 18.5204, lng: 73.8567 },
 ];
+
+export const POPULAR_CITY_LABELS = POPULAR_CITIES.map((c) => c.label);
+
+export const KNOWN_CITIES: KnownCity[] = [
+  ...POPULAR_CITIES,
+  { label: 'Gudivada, Krishna', lat: 16.4355, lng: 80.9925 },
+];
+
+export function isApproximateAccuracy(accuracyMeters?: number | null): boolean {
+  return accuracyMeters == null || accuracyMeters > 5000;
+}
 
 export function isDemoCoords(lat: number, lng: number): boolean {
   return Math.abs(lat - DEMO_COORDS.lat) < 0.02 && Math.abs(lng - DEMO_COORDS.lng) < 0.02;

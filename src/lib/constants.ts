@@ -37,15 +37,11 @@ export const LANGUAGES = [
   { code: 'te', label: 'తెలుగు' },
 ];
 
+import { DEMO_COORDS, POPULAR_CITY_LABELS } from './location-utils';
+
 export const DEFAULT_LOCATION = 'Konaseema, Andhra Pradesh';
 
-export const LOCATIONS = [
-  'Konaseema, Andhra Pradesh',
-  'Amalapuram, Konaseema',
-  'Rajahmundry, Andhra Pradesh',
-  'Hyderabad, Telangana',
-  'Bangalore, Karnataka',
-  'Chennai, Tamil Nadu',
-];
+/** Shown as quick-select chips; any Indian city also works via search or GPS. */
+export const LOCATIONS = POPULAR_CITY_LABELS;
 
-export const DEMO_COORDS = { lat: 16.579, lng: 82.006 };
+export { DEMO_COORDS };
