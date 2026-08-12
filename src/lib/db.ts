@@ -25,8 +25,12 @@ function resolveDatabaseUrl(): string {
 
   if (configured?.startsWith('file:') && configured !== 'file:DATABASE_URL') {
     const rel = configured.slice('file:'.length).replace(/^\.\//, '');
-    const absolute = path.isAbsolute(rel) ? rel : path.join(process.cwd(), rel);
-    if (existsSync(absolute)) return `file:${absolute}`;
+    if (path.isAbsolute(rel)) {
+      if (existsSync(rel)) return `file:${rel}`;
+    } else {
+      const absolute = path.join(/* turbopackIgnore: true */ process.cwd(), 'prisma', rel.replace(/^prisma\//, ''));
+      if (existsSync(absolute)) return `file:${absolute}`;
+    }
   }
 
   if (existsSync(bundledDb)) return `file:${bundledDb}`;

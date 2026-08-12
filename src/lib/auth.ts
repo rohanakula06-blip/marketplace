@@ -16,6 +16,21 @@ export type SessionClaims = {
 
 export type TokenPayload = SessionClaims & { userId: string };
 
+export type AuthUser = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  role: string;
+  location: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  language: string;
+  largeText: boolean;
+  reducedMotion: boolean;
+  workerProfile: unknown;
+};
+
 export async function hashPassword(password: string) {
   return bcrypt.hash(password, 12);
 }
@@ -36,7 +51,7 @@ export function verifyToken(token: string): TokenPayload | null {
   }
 }
 
-function userFromTokenClaims(payload: TokenPayload) {
+function userFromTokenClaims(payload: TokenPayload): AuthUser | null {
   if (!payload.email || !payload.name || !payload.role) return null;
 
   return {
@@ -46,6 +61,8 @@ function userFromTokenClaims(payload: TokenPayload) {
     phone: payload.phone ?? null,
     role: payload.role,
     location: payload.location ?? null,
+    latitude: null,
+    longitude: null,
     language: 'en',
     largeText: false,
     reducedMotion: false,
@@ -64,7 +81,7 @@ export async function createSession(userId: string, claims: SessionClaims) {
   return { token, expiresAt };
 }
 
-export async function getCurrentUser() {
+export async function getCurrentUser(): Promise<AuthUser | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get('localpro_token')?.value;
   if (!token) return null;
