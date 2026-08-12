@@ -31,6 +31,61 @@ function getPosition(options: PositionOptions): Promise<GeoCoords> {
   });
 }
 
+/** Watch GPS briefly and keep the most accurate reading. */
+function watchBestPosition(timeoutMs: number): Promise<GeoCoords> {
+  return new Promise((resolve, reject) => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      reject(new Error('Geolocation is not supported by your browser'));
+      return;
+    }
+
+    let best: GeoCoords | null = null;
+    let watchId = -1;
+
+    const finish = (result: GeoCoords) => {
+      if (watchId >= 0) navigator.geolocation.clearWatch(watchId);
+      resolve(result);
+    };
+
+    const fail = (err: GeolocationPositionError) => {
+      if (watchId >= 0) navigator.geolocation.clearWatch(watchId);
+      if (best) finish(best);
+      else reject(err);
+    };
+
+    const timer = setTimeout(() => {
+      if (best) finish(best);
+      else fail({ code: 3 } as GeolocationPositionError);
+    }, timeoutMs);
+
+    watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const reading: GeoCoords = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+        };
+        if (!best || (reading.accuracy ?? Infinity) < (best.accuracy ?? Infinity)) {
+          best = reading;
+        }
+        if (reading.accuracy != null && reading.accuracy <= 80) {
+          clearTimeout(timer);
+          finish(reading);
+        }
+      },
+      (err) => {
+        clearTimeout(timer);
+        fail(err);
+      },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: timeoutMs }
+    );
+  });
+}
+
+function isUsableAccuracy(accuracy?: number): boolean {
+  return accuracy != null && accuracy <= 15000;
+}
+
 function geolocationErrorMessage(err: GeolocationPositionError): string {
   switch (err.code) {
     case 1:
@@ -64,20 +119,44 @@ export async function getCurrentPositionAsync(): Promise<GeoCoords> {
   }
 
   const attempts: PositionOptions[] = [
+    { enableHighAccuracy: true, timeout: 25000, maximumAge: 0 },
     { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 120000 },
-    { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 },
   ];
 
   let lastError: GeolocationPositionError | null = null;
+  let bestReading: GeoCoords | null = null;
 
   for (const options of attempts) {
     try {
-      return await getPosition(options);
+      const reading = await getPosition(options);
+      if (!bestReading || (reading.accuracy ?? Infinity) < (bestReading.accuracy ?? Infinity)) {
+        bestReading = reading;
+      }
+      if (isUsableAccuracy(reading.accuracy) && (reading.accuracy ?? Infinity) <= 500) {
+        return reading;
+      }
     } catch (err) {
       lastError = err as GeolocationPositionError;
       if (lastError.code === 1) break;
     }
+  }
+
+  try {
+    const watched = await watchBestPosition(18000);
+    if (!bestReading || (watched.accuracy ?? Infinity) < (bestReading.accuracy ?? Infinity)) {
+      bestReading = watched;
+    }
+  } catch (err) {
+    if (!bestReading) lastError = err as GeolocationPositionError;
+  }
+
+  if (bestReading) {
+    if (!isUsableAccuracy(bestReading.accuracy)) {
+      throw new Error(
+        'GPS signal is too weak (location may be off by many km). Move outdoors, enable Location Services, or search your area manually.'
+      );
+    }
+    return bestReading;
   }
 
   throw new Error(geolocationErrorMessage(lastError ?? ({ code: 0 } as GeolocationPositionError)));

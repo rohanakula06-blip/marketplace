@@ -20,11 +20,16 @@ export function LocationControls({ compact = false, className }: LocationControl
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
   const { refresh, isDetecting } = useCurrentLocation({ autoDetect: false });
+
+  const useGps = () => {
+    setLocationLocked(false);
+    refresh();
+  };
   const [manualInput, setManualInput] = useState('');
   const [searching, setSearching] = useState(false);
 
   const saveSearch = async (label: string, lat: number, lng: number) => {
-    setCoords(lat, lng, label, null);
+    setCoords(lat, lng, label, null, 'manual');
     setLocationLocked(true);
     if (user) {
       try {
@@ -53,7 +58,7 @@ export function LocationControls({ compact = false, className }: LocationControl
     <div className={cn('space-y-3', className)}>
       <button
         type="button"
-        onClick={() => refresh()}
+        onClick={useGps}
         disabled={isDetecting}
         className={cn(
           'flex w-full items-center justify-center gap-2 rounded-xl font-medium transition-all',

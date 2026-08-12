@@ -39,7 +39,7 @@ export function LocationPicker({ showMap = true, compact = false, className }: L
   const [saving, setSaving] = useState(false);
 
   const saveToBackend = async (label: string, lat: number, lng: number, locked = false) => {
-    setCoords(lat, lng, label, locked ? null : undefined);
+    setCoords(lat, lng, label, locked ? null : undefined, locked ? 'manual' : 'gps');
     setLocationLocked(locked);
     if (user) {
       setSaving(true);

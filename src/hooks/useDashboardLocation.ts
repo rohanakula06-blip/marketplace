@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuthStore, useUIStore } from '@/store/app-store';
 import { useGeolocation, resolveLocationFromGps } from '@/lib/geolocation';
-import { isDemoCoords } from '@/lib/location-utils';
 import { api } from '@/lib/api';
 
 export function useDashboardLocation() {
@@ -21,10 +20,8 @@ export function useDashboardLocation() {
       try {
         const pos = await getCurrentPosition();
         const resolved = await resolveLocationFromGps(pos);
-        setCoords(resolved.lat, resolved.lng, resolved.label, resolved.accuracy ?? null);
-        if (!quiet && pos.accuracy != null && pos.accuracy > 8000) {
-          showToast('GPS is approximate — tap Amalapuram below if the town is wrong', 'info');
-        }
+        setCoords(resolved.lat, resolved.lng, resolved.label, resolved.accuracy ?? null, 'gps');
+        setLocationLocked(false);
 
         if (user) {
           try {
@@ -53,15 +50,9 @@ export function useDashboardLocation() {
   );
 
   useEffect(() => {
-    if (!authReady || locationLocked) return;
-
+    if (!authReady) return;
     setInitialized(true);
-
-    const { coords: saved } = useUIStore.getState();
-    if (!isDemoCoords(saved.lat, saved.lng)) return;
-
-    syncCurrentLocation(true).catch(() => {});
-  }, [authReady, locationLocked, syncCurrentLocation]);
+  }, [authReady]);
 
   return {
     coords: { lat: coords.lat, lng: coords.lng },

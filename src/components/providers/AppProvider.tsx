@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore, useUIStore } from '@/store/app-store';
 import { api } from '@/lib/api';
-import { detectCurrentLocation } from '@/lib/geolocation';
-import { hasRealCoords, isDemoCoords } from '@/lib/location-utils';
+import { useCurrentLocation } from '@/hooks/useCurrentLocation';
 import { Toast } from '@/components/ui/Toast';
 import { AuthModals } from '@/components/modals/AuthModals';
 import { BookingModal } from '@/components/modals/BookingModal';
@@ -14,35 +13,15 @@ import { MessageModal } from '@/components/modals/MessageModal';
 import { InfoModal } from '@/components/modals/InfoModal';
 import { Wifi, WifiOff } from 'lucide-react';
 
-async function tryAutoDetectLocation() {
-  const { coords, setCoords, locationLocked } = useUIStore.getState();
-  if (locationLocked) return;
-  if (!isDemoCoords(coords.lat, coords.lng)) return;
-
-  try {
-    const detected = await detectCurrentLocation();
-    setCoords(detected.lat, detected.lng, detected.label, detected.accuracy ?? null);
-
-    const user = useAuthStore.getState().user;
-    if (user) {
-      await api.location.update({
-        location: detected.label,
-        latitude: detected.lat,
-        longitude: detected.lng,
-      });
-      useAuthStore.getState().setUser({ ...user, location: detected.label });
-    }
-  } catch {
-    // Permission denied or unavailable — user can pick manually.
-  }
-}
-
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const setUser = useAuthStore((s) => s.setUser);
   const setAuthReady = useAuthStore((s) => s.setAuthReady);
-  const { largeText, reducedMotion, showToast, setCoords } = useUIStore();
+  const { largeText, reducedMotion, showToast } = useUIStore();
   const [backendStatus, setBackendStatus] = useState<'checking' | 'connected' | 'error'>('checking');
   const [uiHydrated, setUiHydrated] = useState(false);
+
+  // GPS on app load — never let saved account/demo coords override live location
+  useCurrentLocation({ autoDetect: true, waitForAuth: true });
 
   useEffect(() => {
     if (useUIStore.persist.hasHydrated()) {
@@ -53,6 +32,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (!uiHydrated) return;
+
     async function init() {
       try {
         const health = await api.health();
@@ -72,15 +53,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const { user: sessionUser } = await api.auth.me();
         if (sessionUser) {
           setUser(sessionUser as unknown as Parameters<typeof setUser>[0]);
-
-          try {
-            const loc = await api.location.get();
-            if (hasRealCoords(loc.latitude, loc.longitude)) {
-              setCoords(loc.latitude, loc.longitude, loc.location ?? undefined);
-            }
-          } catch {
-            // Keep persisted device location.
-          }
+          // Do NOT overwrite map coords from account — GPS hook owns live location.
         } else {
           setUser(null);
         }
@@ -91,12 +64,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     }
     init();
-  }, [setUser, setAuthReady, setCoords, showToast]);
-
-  useEffect(() => {
-    if (!uiHydrated) return;
-    tryAutoDetectLocation();
-  }, [uiHydrated]);
+  }, [uiHydrated, setUser, setAuthReady, showToast]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('large-text', largeText);

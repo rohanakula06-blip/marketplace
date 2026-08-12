@@ -62,6 +62,7 @@ interface UIState {
   coords: { lat: number; lng: number };
   locationAccuracy: number | null;
   locationLocked: boolean;
+  locationSource: 'default' | 'gps' | 'manual' | 'account';
   language: string;
   largeText: boolean;
   reducedMotion: boolean;
@@ -77,7 +78,7 @@ interface UIState {
   showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
   clearToast: () => void;
   setLocation: (location: string) => void;
-  setCoords: (lat: number, lng: number, label?: string, accuracyMeters?: number | null) => void;
+  setCoords: (lat: number, lng: number, label?: string, accuracyMeters?: number | null, source?: UIState['locationSource']) => void;
   setLocationLocked: (locked: boolean) => void;
   setLanguage: (language: string) => void;
   setLargeText: (v: boolean) => void;
@@ -101,6 +102,7 @@ export const useUIStore = create<UIState>()(
       coords: { lat: 16.579, lng: 82.006 },
       locationAccuracy: null,
       locationLocked: false,
+      locationSource: 'default',
       language: 'en',
       largeText: false,
       reducedMotion: false,
@@ -117,24 +119,31 @@ export const useUIStore = create<UIState>()(
       showToast: (message, type = 'info') => set({ toast: { message, type } }),
       clearToast: () => set({ toast: null }),
       setLocation: (location) => set({ location }),
-      setCoords: (lat, lng, label, accuracyMeters) =>
+      setCoords: (lat, lng, label, accuracyMeters, source) =>
         set((s) => ({
           coords: { lat, lng },
           locationAccuracy: accuracyMeters !== undefined ? accuracyMeters : s.locationAccuracy,
+          locationSource: source ?? s.locationSource,
           ...(label ? { location: label } : {}),
         })),
-      setLocationLocked: (locationLocked) => set({ locationLocked }),
+      setLocationLocked: (locationLocked) =>
+        set((s) => ({
+          locationLocked,
+          ...(locationLocked ? { locationSource: 'manual' as const } : {}),
+          ...(!locationLocked && s.locationSource === 'manual' ? { locationSource: 'default' as const } : {}),
+        })),
       setLanguage: (language) => set({ language }),
       setLargeText: (largeText) => set({ largeText }),
       setReducedMotion: (reducedMotion) => set({ reducedMotion }),
     }),
     {
-      name: 'localpro-ui-v4',
+      name: 'localpro-ui-v5',
       partialize: (s) => ({
         location: s.location,
         coords: s.coords,
         locationAccuracy: s.locationAccuracy,
         locationLocked: s.locationLocked,
+        locationSource: s.locationSource,
       }),
     }
   )

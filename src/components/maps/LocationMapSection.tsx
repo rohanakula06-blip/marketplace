@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import { MapPin, Navigation, Loader2, AlertCircle } from 'lucide-react';
 import { useCurrentLocation } from '@/hooks/useCurrentLocation';
+import { useUIStore } from '@/store/app-store';
 import { formatAccuracy } from '@/lib/location-utils';
 import type { MapMarker } from './MapView';
 import { cn } from '@/lib/utils';
@@ -35,8 +36,14 @@ export function LocationMapSection({
   footer,
   compact = false,
 }: LocationMapSectionProps) {
-  const { coords, location, accuracy, status, error, refresh, isDetecting, locationLocked } =
-    useCurrentLocation({ autoDetect: true });
+  const { coords, location, accuracy, status, error, refresh, isDetecting, locationLocked, locationSource } =
+    useCurrentLocation({ autoDetect: false });
+  const setLocationLocked = useUIStore((s) => s.setLocationLocked);
+
+  const useGps = () => {
+    setLocationLocked(false);
+    refresh();
+  };
 
   const accuracyLabel = formatAccuracy(accuracy ?? undefined);
 
@@ -65,14 +72,14 @@ export function LocationMapSection({
             <p className="text-xs text-slate-400 mt-0.5">
               {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
               {accuracyLabel ? ` · ${accuracyLabel}` : ''}
-              {locationLocked ? ' · manually set' : ' · GPS'}
+              {locationLocked ? ' · manually set' : locationSource === 'gps' ? ' · GPS' : ' · waiting for GPS…'}
             </p>
           </div>
         </div>
 
         <button
           type="button"
-          onClick={() => refresh()}
+          onClick={useGps}
           disabled={isDetecting}
           className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60 shrink-0"
         >
@@ -80,6 +87,18 @@ export function LocationMapSection({
           {compact ? 'Refresh' : 'Use my location'}
         </button>
       </div>
+
+      {locationLocked && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Location was set manually. Tap <strong>Use my location</strong> to switch back to live GPS.
+        </div>
+      )}
+
+      {locationSource !== 'gps' && !isDetecting && !locationLocked && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Map may show a saved/default spot. Tap <strong>Use my location</strong> and allow browser location access.
+        </div>
+      )}
 
       {error && (
         <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -113,7 +132,7 @@ export function LocationMapSection({
           accuracyMeters={accuracy}
           height={height}
           onMarkerClick={onMarkerClick}
-          onRecenter={() => refresh()}
+          onRecenter={useGps}
           recentering={isDetecting}
           animateCenter={status !== 'idle'}
         />
