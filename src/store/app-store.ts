@@ -60,6 +60,8 @@ interface UIState {
   toast: { message: string; type: 'success' | 'error' | 'info' } | null;
   location: string;
   coords: { lat: number; lng: number };
+  locationAccuracy: number | null;
+  locationLocked: boolean;
   language: string;
   largeText: boolean;
   reducedMotion: boolean;
@@ -75,43 +77,65 @@ interface UIState {
   showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
   clearToast: () => void;
   setLocation: (location: string) => void;
-  setCoords: (lat: number, lng: number, label?: string) => void;
+  setCoords: (lat: number, lng: number, label?: string, accuracyMeters?: number | null) => void;
+  setLocationLocked: (locked: boolean) => void;
   setLanguage: (language: string) => void;
   setLargeText: (v: boolean) => void;
   setReducedMotion: (v: boolean) => void;
 }
 
-export const useUIStore = create<UIState>((set) => ({
-  authModal: null,
-  authIntent: null,
-  bookingModal: false,
-  selectedWorkerId: null,
-  workerProfileModal: null,
-  jobModal: null,
-  paymentModal: null,
-  messageModal: null,
-  infoModal: null,
-  toast: null,
-  location: 'Konaseema, Andhra Pradesh',
-  coords: { lat: 16.579, lng: 82.006 },
-  language: 'en',
-  largeText: false,
-  reducedMotion: false,
-  setAuthModal: (authModal) => set({ authModal }),
-  setAuthIntent: (authIntent) => set({ authIntent }),
-  openAuth: (modal, intent) => set({ authModal: modal, authIntent: intent || null }),
-  setBookingModal: (open, workerId) =>
-    set({ bookingModal: open, selectedWorkerId: workerId || null }),
-  setWorkerProfileModal: (workerProfileModal) => set({ workerProfileModal }),
-  setJobModal: (jobModal) => set({ jobModal }),
-  setPaymentModal: (paymentModal) => set({ paymentModal }),
-  setMessageModal: (messageModal) => set({ messageModal }),
-  setInfoModal: (infoModal) => set({ infoModal }),
-  showToast: (message, type = 'info') => set({ toast: { message, type } }),
-  clearToast: () => set({ toast: null }),
-  setLocation: (location) => set({ location }),
-  setCoords: (lat, lng, label) => set((s) => ({ coords: { lat, lng }, ...(label ? { location: label } : {}) })),
-  setLanguage: (language) => set({ language }),
-  setLargeText: (largeText) => set({ largeText }),
-  setReducedMotion: (reducedMotion) => set({ reducedMotion }),
-}));
+export const useUIStore = create<UIState>()(
+  persist(
+    (set) => ({
+      authModal: null,
+      authIntent: null,
+      bookingModal: false,
+      selectedWorkerId: null,
+      workerProfileModal: null,
+      jobModal: null,
+      paymentModal: null,
+      messageModal: null,
+      infoModal: null,
+      toast: null,
+      location: 'Konaseema, Andhra Pradesh',
+      coords: { lat: 16.579, lng: 82.006 },
+      locationAccuracy: null,
+      locationLocked: false,
+      language: 'en',
+      largeText: false,
+      reducedMotion: false,
+      setAuthModal: (authModal) => set({ authModal }),
+      setAuthIntent: (authIntent) => set({ authIntent }),
+      openAuth: (modal, intent) => set({ authModal: modal, authIntent: intent || null }),
+      setBookingModal: (open, workerId) =>
+        set({ bookingModal: open, selectedWorkerId: workerId || null }),
+      setWorkerProfileModal: (workerProfileModal) => set({ workerProfileModal }),
+      setJobModal: (jobModal) => set({ jobModal }),
+      setPaymentModal: (paymentModal) => set({ paymentModal }),
+      setMessageModal: (messageModal) => set({ messageModal }),
+      setInfoModal: (infoModal) => set({ infoModal }),
+      showToast: (message, type = 'info') => set({ toast: { message, type } }),
+      clearToast: () => set({ toast: null }),
+      setLocation: (location) => set({ location }),
+      setCoords: (lat, lng, label, accuracyMeters) =>
+        set((s) => ({
+          coords: { lat, lng },
+          locationAccuracy: accuracyMeters !== undefined ? accuracyMeters : s.locationAccuracy,
+          ...(label ? { location: label } : {}),
+        })),
+      setLocationLocked: (locationLocked) => set({ locationLocked }),
+      setLanguage: (language) => set({ language }),
+      setLargeText: (largeText) => set({ largeText }),
+      setReducedMotion: (reducedMotion) => set({ reducedMotion }),
+    }),
+    {
+      name: 'localpro-ui-v4',
+      partialize: (s) => ({
+        location: s.location,
+        coords: s.coords,
+        locationAccuracy: s.locationAccuracy,
+        locationLocked: s.locationLocked,
+      }),
+    }
+  )
+);

@@ -12,6 +12,8 @@ export type SessionClaims = {
   role: string;
   phone?: string | null;
   location?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 export type TokenPayload = SessionClaims & { userId: string };
@@ -61,8 +63,8 @@ function userFromTokenClaims(payload: TokenPayload): AuthUser | null {
     phone: payload.phone ?? null,
     role: payload.role,
     location: payload.location ?? null,
-    latitude: null,
-    longitude: null,
+    latitude: payload.latitude ?? null,
+    longitude: payload.longitude ?? null,
     language: 'en',
     largeText: false,
     reducedMotion: false,
@@ -168,6 +170,8 @@ export function sessionClaimsFromUser(user: {
   role: string;
   phone?: string | null;
   location?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }): SessionClaims {
   return {
     email: user.email,
@@ -175,5 +179,7 @@ export function sessionClaimsFromUser(user: {
     role: user.role,
     phone: user.phone ?? null,
     location: user.location ?? null,
+    latitude: user.latitude ?? null,
+    longitude: user.longitude ?? null,
   };
 }

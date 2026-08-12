@@ -1,13 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth';
-import { DEMO_COORDS } from '@/lib/constants';
+import {
+  getCurrentUser,
+  sessionClaimsFromUser,
+  signToken,
+  setAuthCookie,
+} from '@/lib/auth';
+
+async function refreshAuthCookie(
+  user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>,
+  location: string | null | undefined,
+  latitude: number | null | undefined,
+  longitude: number | null | undefined
+) {
+  const token = signToken(user.id, {
+    ...sessionClaimsFromUser(user),
+    location: location ?? user.location,
+    latitude: latitude ?? user.latitude,
+    longitude: longitude ?? user.longitude,
+  });
+  await setAuthCookie(token);
+}
 
 export async function PATCH(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { location, latitude, longitude } = await req.json();
+
+  const nextLocation = location ?? user.location;
+  const nextLat = latitude !== undefined ? latitude : user.latitude;
+  const nextLng = longitude !== undefined ? longitude : user.longitude;
 
   try {
     const updated = await prisma.user.update({
@@ -19,17 +42,20 @@ export async function PATCH(req: NextRequest) {
       },
     });
 
+    await refreshAuthCookie(user, updated.location, updated.latitude, updated.longitude);
+
     return NextResponse.json({
       location: updated.location,
       latitude: updated.latitude,
       longitude: updated.longitude,
     });
   } catch {
-    // User may exist only in JWT on another Vercel serverless instance.
+    await refreshAuthCookie(user, nextLocation, nextLat, nextLng);
+
     return NextResponse.json({
-      location: location ?? user.location,
-      latitude: latitude ?? user.latitude ?? DEMO_COORDS.lat,
-      longitude: longitude ?? user.longitude ?? DEMO_COORDS.lng,
+      location: nextLocation,
+      latitude: nextLat,
+      longitude: nextLng,
     });
   }
 }
@@ -40,7 +66,7 @@ export async function GET() {
 
   return NextResponse.json({
     location: user.location,
-    latitude: user.latitude ?? DEMO_COORDS.lat,
-    longitude: user.longitude ?? DEMO_COORDS.lng,
+    latitude: user.latitude,
+    longitude: user.longitude,
   });
 }

@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore, useUIStore } from '@/store/app-store';
 import { api } from '@/lib/api';
+import { detectCurrentLocation } from '@/lib/geolocation';
+import { hasRealCoords, isDemoCoords } from '@/lib/location-utils';
 import { Toast } from '@/components/ui/Toast';
 import { AuthModals } from '@/components/modals/AuthModals';
 import { BookingModal } from '@/components/modals/BookingModal';
@@ -12,22 +14,49 @@ import { MessageModal } from '@/components/modals/MessageModal';
 import { InfoModal } from '@/components/modals/InfoModal';
 import { Wifi, WifiOff } from 'lucide-react';
 
+async function tryAutoDetectLocation() {
+  const { coords, setCoords, locationLocked } = useUIStore.getState();
+  if (locationLocked) return;
+  if (!isDemoCoords(coords.lat, coords.lng)) return;
+
+  try {
+    const detected = await detectCurrentLocation();
+    setCoords(detected.lat, detected.lng, detected.label, detected.accuracy ?? null);
+
+    const user = useAuthStore.getState().user;
+    if (user) {
+      await api.location.update({
+        location: detected.label,
+        latitude: detected.lat,
+        longitude: detected.lng,
+      });
+      useAuthStore.getState().setUser({ ...user, location: detected.label });
+    }
+  } catch {
+    // Permission denied or unavailable — user can pick manually.
+  }
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const setUser = useAuthStore((s) => s.setUser);
   const setAuthReady = useAuthStore((s) => s.setAuthReady);
   const { largeText, reducedMotion, showToast, setCoords } = useUIStore();
   const [backendStatus, setBackendStatus] = useState<'checking' | 'connected' | 'error'>('checking');
+  const [uiHydrated, setUiHydrated] = useState(false);
 
-  // Check backend + restore session on load
+  useEffect(() => {
+    if (useUIStore.persist.hasHydrated()) {
+      setUiHydrated(true);
+      return;
+    }
+    return useUIStore.persist.onFinishHydration(() => setUiHydrated(true));
+  }, []);
+
   useEffect(() => {
     async function init() {
       try {
         const health = await api.health();
-        if (health.status === 'ok') {
-          setBackendStatus('connected');
-        } else {
-          setBackendStatus('error');
-        }
+        setBackendStatus(health.status === 'ok' ? 'connected' : 'error');
       } catch {
         setBackendStatus('error');
         const isLocal = typeof window !== 'undefined' && window.location.hostname === 'localhost';
@@ -43,13 +72,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const { user: sessionUser } = await api.auth.me();
         if (sessionUser) {
           setUser(sessionUser as unknown as Parameters<typeof setUser>[0]);
+
           try {
             const loc = await api.location.get();
-            if (loc.latitude && loc.longitude) {
-              setCoords(loc.latitude, loc.longitude, loc.location);
+            if (hasRealCoords(loc.latitude, loc.longitude)) {
+              setCoords(loc.latitude, loc.longitude, loc.location ?? undefined);
             }
           } catch {
-            // guest user — no location in DB
+            // Keep persisted device location.
           }
         } else {
           setUser(null);
@@ -62,6 +92,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     init();
   }, [setUser, setAuthReady, setCoords, showToast]);
+
+  useEffect(() => {
+    if (!uiHydrated) return;
+    tryAutoDetectLocation();
+  }, [uiHydrated]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('large-text', largeText);
