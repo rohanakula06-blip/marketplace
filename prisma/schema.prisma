@@ -1,0 +1,279 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  phone         String?
+  passwordHash  String    @map("password_hash")
+  googleId      String?   @unique @map("google_id")
+  emailVerified Boolean   @default(false) @map("email_verified")
+  role          String    @default("customer")
+  location      String?
+  latitude      Float?
+  longitude     Float?
+  language      String    @default("en")
+  largeText     Boolean   @default(false) @map("large_text")
+  reducedMotion Boolean   @default(false) @map("reduced_motion")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  workerProfile   WorkerProfile?
+  jobs            Job[]            @relation("CustomerJobs")
+  bookingsAsCustomer Booking[]       @relation("CustomerBookings")
+  bookingsAsWorker   Booking[]       @relation("WorkerBookings")
+  applications    Application[]
+  reviewsGiven    Review[]         @relation("ReviewsGiven")
+  reviewsReceived Review[]         @relation("ReviewsReceived")
+  messagesSent    Message[]        @relation("MessagesSent")
+  messagesReceived Message[]       @relation("MessagesReceived")
+  notifications   Notification[]
+  sessions        Session[]
+  passwordResets  PasswordReset[]
+
+  @@index([role])
+  @@index([location])
+  @@index([phone])
+  @@map("users")
+}
+
+model WorkerProfile {
+  id                 String   @id @default(cuid())
+  userId             String   @unique @map("user_id")
+  category           String
+  skills             String
+  experience         Int      @default(0)
+  pricing            String
+  availability       String   @default("available")
+  verificationStatus String   @default("pending") @map("verification_status")
+  rating             Float    @default(0)
+  reviewCount        Int      @default(0) @map("review_count")
+  completedJobs      Int      @default(0) @map("completed_jobs")
+  bio                String?
+  serviceAreas       String?  @map("service_areas")
+  travelRadius       Float    @default(10) @map("travel_radius")
+  languages          String   @default("English")
+  profilePhoto       String?  @map("profile_photo")
+  isAvailable        Boolean  @default(true) @map("is_available")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documents WorkerDocument[]
+
+  @@index([category])
+  @@index([verificationStatus])
+  @@index([availability])
+  @@map("worker_profiles")
+}
+
+model WorkerDocument {
+  id        String   @id @default(cuid())
+  workerId  String   @map("worker_id")
+  type      String
+  url       String
+  status    String   @default("pending")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  worker WorkerProfile @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  @@map("worker_documents")
+}
+
+model Service {
+  id          String @id @default(cuid())
+  name        String
+  category    String
+  description String
+  icon        String?
+
+  @@index([category])
+  @@map("services")
+}
+
+model Job {
+  id          String   @id @default(cuid())
+  customerId  String   @map("customer_id")
+  title       String
+  category    String
+  description String
+  location    String
+  latitude    Float?
+  longitude   Float?
+  budget      String
+  date        String
+  time        String
+  urgency     String   @default("normal")
+  status      String   @default("open")
+  photoUrl    String?  @map("photo_url")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  customer     User          @relation("CustomerJobs", fields: [customerId], references: [id], onDelete: Cascade)
+  applications Application[]
+  bookings     Booking[]
+
+  @@index([category])
+  @@index([status])
+  @@index([location])
+  @@map("jobs")
+}
+
+model Application {
+  id            String   @id @default(cuid())
+  jobId         String   @map("job_id")
+  workerId      String   @map("worker_id")
+  proposedPrice String   @map("proposed_price")
+  message       String
+  availability  String?
+  estimatedArrival String? @map("estimated_arrival")
+  status        String   @default("pending")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  job    Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  worker User @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("applications")
+}
+
+model Booking {
+  id          String   @id @default(cuid())
+  customerId  String   @map("customer_id")
+  workerId    String   @map("worker_id")
+  jobId       String?  @map("job_id")
+  service     String
+  description String?
+  date        String
+  time        String
+  price       String
+  status      String   @default("requested")
+  address     String?
+  urgency     String   @default("normal")
+  photoUrl    String?  @map("photo_url")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  customer User     @relation("CustomerBookings", fields: [customerId], references: [id], onDelete: Cascade)
+  worker   User     @relation("WorkerBookings", fields: [workerId], references: [id], onDelete: Cascade)
+  job      Job?     @relation(fields: [jobId], references: [id])
+  reviews  Review[]
+  messages Message[]
+  payments Payment[]
+
+  @@index([status])
+  @@map("bookings")
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  customerId String   @map("customer_id")
+  workerId   String   @map("worker_id")
+  bookingId  String   @map("booking_id")
+  rating     Int
+  review     String
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  customer User    @relation("ReviewsGiven", fields: [customerId], references: [id], onDelete: Cascade)
+  worker   User    @relation("ReviewsReceived", fields: [workerId], references: [id], onDelete: Cascade)
+  booking  Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("reviews")
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  senderId   String   @map("sender_id")
+  receiverId String   @map("receiver_id")
+  bookingId  String?  @map("booking_id")
+  message    String
+  imageUrl   String?  @map("image_url")
+  location   String?
+  isRead     Boolean  @default(false) @map("is_read")
+  timestamp  DateTime @default(now())
+
+  sender   User     @relation("MessagesSent", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User     @relation("MessagesReceived", fields: [receiverId], references: [id], onDelete: Cascade)
+  booking  Booking? @relation(fields: [bookingId], references: [id])
+
+  @@index([senderId, receiverId])
+  @@map("messages")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  title     String
+  message   String
+  isRead    Boolean  @default(false) @map("is_read")
+  type      String   @default("info")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model Payment {
+  id        String   @id @default(cuid())
+  bookingId String   @map("booking_id")
+  amount    String
+  method    String
+  status    String   @default("pending")
+  isDemo    Boolean  @default(true) @map("is_demo")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@map("sessions")
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_resets")
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String?
+  email     String?
+  code      String
+  purpose   String   @default("login")
+  expiresAt DateTime @map("expires_at")
+  verified  Boolean  @default(false)
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([phone, purpose])
+  @@index([email, purpose])
+  @@map("otp_codes")
+}
