@@ -10,6 +10,7 @@ import { useDashboardLocation } from '@/hooks/useDashboardLocation';
 
 export default function CustomerDashboard() {
   const user = useAuthStore((s) => s.user);
+  const authReady = useAuthStore((s) => s.authReady);
   const { openAuth, setWorkerProfileModal, setBookingModal, showToast } = useUIStore();
   const { coords, location, syncing, initialized, syncCurrentLocation } = useDashboardLocation();
   const [workers, setWorkers] = useState<Record<string, unknown>[]>([]);
@@ -47,12 +48,13 @@ export default function CustomerDashboard() {
   }, [user, initialized, coords.lat, coords.lng, showToast]);
 
   useEffect(() => {
+    if (!authReady) return;
     if (!user) {
       openAuth('login', 'customer');
       return;
     }
     loadData();
-  }, [user, openAuth, loadData]);
+  }, [user, authReady, openAuth, loadData]);
 
   const postJob = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -82,6 +84,14 @@ export default function CustomerDashboard() {
       setPosting(false);
     }
   };
+
+  if (!authReady) {
+    return (
+      <div className="min-h-screen section-dark bg-[#0a0f1e] flex items-center justify-center">
+        <Loader2 size={32} className="animate-spin text-blue-400" />
+      </div>
+    );
+  }
 
   if (!user) return null;
 

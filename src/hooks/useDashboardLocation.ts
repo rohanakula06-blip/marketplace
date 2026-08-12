@@ -45,6 +45,9 @@ export function useDashboardLocation() {
     let cancelled = false;
 
     async function init() {
+      // Don't block dashboard on GPS — load with default coords, refine in background.
+      if (!cancelled) setInitialized(true);
+
       try {
         await syncCurrentLocation(true);
       } catch {
@@ -55,8 +58,6 @@ export function useDashboardLocation() {
             user.location
           );
         }
-      } finally {
-        if (!cancelled) setInitialized(true);
       }
     }
 

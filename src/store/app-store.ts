@@ -22,9 +22,11 @@ interface AuthState {
   user: User | null;
   journey: UserJourney;
   isLoading: boolean;
+  authReady: boolean;
   setUser: (user: User | null) => void;
   setJourney: (journey: UserJourney) => void;
   setLoading: (loading: boolean) => void;
+  setAuthReady: (ready: boolean) => void;
   logout: () => void;
 }
 
@@ -33,13 +35,15 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       journey: null,
-      isLoading: false,
+      isLoading: true,
+      authReady: false,
       setUser: (user) => set({ user }),
       setJourney: (journey) => set({ journey }),
       setLoading: (isLoading) => set({ isLoading }),
+      setAuthReady: (authReady) => set({ authReady }),
       logout: () => set({ user: null, journey: null }),
     }),
-    { name: 'localpro-auth', partialize: (s) => ({ journey: s.journey }) }
+    { name: 'localpro-auth', partialize: (s) => ({ journey: s.journey, user: s.user }) }
   )
 );
 

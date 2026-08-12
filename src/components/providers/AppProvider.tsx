@@ -14,7 +14,7 @@ import { Wifi, WifiOff } from 'lucide-react';
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const setUser = useAuthStore((s) => s.setUser);
-  const user = useAuthStore((s) => s.user);
+  const setAuthReady = useAuthStore((s) => s.setAuthReady);
   const { largeText, reducedMotion, showToast, setCoords } = useUIStore();
   const [backendStatus, setBackendStatus] = useState<'checking' | 'connected' | 'error'>('checking');
 
@@ -43,7 +43,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const { user: sessionUser } = await api.auth.me();
         if (sessionUser) {
           setUser(sessionUser as unknown as Parameters<typeof setUser>[0]);
-          // Restore saved location from database
           try {
             const loc = await api.location.get();
             if (loc.latitude && loc.longitude) {
@@ -52,13 +51,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           } catch {
             // guest user — no location in DB
           }
+        } else {
+          setUser(null);
         }
       } catch {
-        // not logged in
+        setUser(null);
+      } finally {
+        setAuthReady(true);
       }
     }
     init();
-  }, [setUser, setCoords, showToast]);
+  }, [setUser, setAuthReady, setCoords, showToast]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('large-text', largeText);

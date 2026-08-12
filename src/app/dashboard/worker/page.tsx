@@ -10,6 +10,7 @@ import { useDashboardLocation } from '@/hooks/useDashboardLocation';
 
 export default function WorkerDashboard() {
   const user = useAuthStore((s) => s.user);
+  const authReady = useAuthStore((s) => s.authReady);
   const { openAuth, showToast } = useUIStore();
   const { coords, location, syncing, initialized, syncCurrentLocation } = useDashboardLocation();
   const [jobs, setJobs] = useState<Record<string, unknown>[]>([]);
@@ -31,12 +32,13 @@ export default function WorkerDashboard() {
   }, [user, initialized, coords.lat, coords.lng]);
 
   useEffect(() => {
+    if (!authReady) return;
     if (!user) {
       openAuth('login', 'worker');
       return;
     }
     loadData();
-  }, [user, openAuth, loadData]);
+  }, [user, authReady, openAuth, loadData]);
 
   const apply = async (jobId: string) => {
     try {
@@ -63,6 +65,14 @@ export default function WorkerDashboard() {
       showToast('Failed to update availability', 'error');
     }
   };
+
+  if (!authReady) {
+    return (
+      <div className="min-h-screen section-dark bg-[#0a0f1e] flex items-center justify-center">
+        <Loader2 size={32} className="animate-spin text-teal-400" />
+      </div>
+    );
+  }
 
   if (!user) return null;
 

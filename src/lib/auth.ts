@@ -29,7 +29,11 @@ export function verifyToken(token: string) {
 export async function createSession(userId: string) {
   const token = signToken(userId);
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  await prisma.session.create({ data: { userId, token, expiresAt } });
+  try {
+    await prisma.session.create({ data: { userId, token, expiresAt } });
+  } catch {
+    // Session write can fail on read-only/ephemeral serverless storage; JWT cookie still authenticates.
+  }
   return { token, expiresAt };
 }
 
@@ -41,17 +45,32 @@ export async function getCurrentUser() {
   const payload = verifyToken(token);
   if (!payload) return null;
 
-  const session = await prisma.session.findUnique({
-    where: { token },
-    include: {
-      user: {
-        include: { workerProfile: true },
+  try {
+    const session = await prisma.session.findUnique({
+      where: { token },
+      include: {
+        user: {
+          include: { workerProfile: true },
+        },
       },
-    },
-  });
+    });
 
-  if (!session || session.expiresAt < new Date()) return null;
-  return session.user;
+    if (session && session.expiresAt >= new Date()) {
+      return session.user;
+    }
+  } catch {
+    // Session lookup can fail when DB is ephemeral across serverless instances.
+  }
+
+  // Stateless fallback: valid JWT → load user directly (works on Vercel serverless).
+  try {
+    return await prisma.user.findUnique({
+      where: { id: payload.userId },
+      include: { workerProfile: true },
+    });
+  } catch {
+    return null;
+  }
 }
 
 export async function setAuthCookie(token: string) {
