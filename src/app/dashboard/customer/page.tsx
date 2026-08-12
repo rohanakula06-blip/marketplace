@@ -101,7 +101,7 @@ export default function CustomerDashboard() {
             >
               {syncing ? <Loader2 size={12} className="animate-spin" /> : <MapPin size={12} />}
               {location}
-              {!syncing && <Navigation size={11} className="opacity-70" title="Refresh GPS" />}
+              {!syncing && <Navigation size={11} className="opacity-70" aria-label="Refresh GPS" />}
             </button>
           </div>
           <div className="flex gap-3">
