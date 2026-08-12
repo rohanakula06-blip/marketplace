@@ -1,12 +1,20 @@
 'use client';
 
 import Link from 'next/link';
-import { Search, Briefcase, CheckCircle } from 'lucide-react';
+import { Search, CheckCircle } from 'lucide-react';
 import { ActionCards } from './ActionCards';
 import { LocationPicker } from '../location/LocationPicker';
 import { TrustBar, StatsBar } from '../layout/Navbar';
+import { useAuthStore } from '@/store/app-store';
 
 export function HeroSection() {
+  const user = useAuthStore((s) => s.user);
+  const findWorkersHref = user
+    ? user.workerProfile
+      ? '/find-workers'
+      : '/dashboard/customer'
+    : '/register';
+
   return (
     <section id="home" className="relative min-h-screen flex items-center pt-20 pb-12 overflow-hidden">
       {/* Suburban street background — matches reference mockup */}
@@ -50,7 +58,7 @@ export function HeroSection() {
           <p className="text-sm text-slate-500 mb-4">Use GPS or search to find verified professionals near you</p>
           <LocationPicker showMap compact />
           <div className="mt-4">
-            <Link href="/find-workers" className="btn-primary inline-flex items-center gap-2">
+            <Link href={findWorkersHref} className="btn-primary inline-flex items-center gap-2">
               <Search size={16} /> Find Nearby Professionals
             </Link>
           </div>

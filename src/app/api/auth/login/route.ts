@@ -4,12 +4,13 @@ import { hashPassword, verifyPassword, createSession, setAuthCookie, sanitizeUse
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password } = await req.json();
+    const { email, password, rememberMe } = await req.json();
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 });
     }
 
     const normalizedEmail = email.trim().toLowerCase();
+    const staySignedIn = rememberMe === true;
 
     const user = await prisma.user.findUnique({
       where: { email: normalizedEmail },
@@ -22,11 +23,11 @@ export async function POST(req: NextRequest) {
 
     const passwordValid = await verifyPassword(password, user.passwordHash);
     if (!passwordValid) {
-      return NextResponse.json({ error: 'Incorrect password. Try again or use email/mobile OTP.' }, { status: 401 });
+      return NextResponse.json({ error: 'Incorrect password. Try again or reset your password.' }, { status: 401 });
     }
 
-    const { token } = await createSession(user.id, sessionClaimsFromUser(user));
-    await setAuthCookie(token);
+    const { token } = await createSession(user.id, sessionClaimsFromUser(user), staySignedIn);
+    await setAuthCookie(token, staySignedIn);
 
     return NextResponse.json({ user: sanitizeUser(user) });
   } catch {

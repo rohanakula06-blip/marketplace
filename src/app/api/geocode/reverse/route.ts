@@ -11,18 +11,30 @@ function formatPreciseIndianAddress(
   address: Record<string, string | undefined>,
   displayName?: string
 ) {
-  const parts = [
-    address.neighbourhood,
-    address.suburb,
-    address.village,
-    address.town || address.county || address.city || address.municipality,
-    address.state_district,
-    address.state,
-  ]
+  const locality =
+    address.neighbourhood ||
+    address.suburb ||
+    address.quarter ||
+    address.residential ||
+    address.hamlet ||
+    address.village;
+
+  const town =
+    address.city ||
+    address.town ||
+    address.municipality ||
+    address.county;
+
+  const district = address.state_district;
+  const state = address.state;
+
+  const parts = [locality, town, district, state]
     .filter(Boolean)
     .filter((part, index, arr) => arr.indexOf(part) === index) as string[];
 
-  if (parts.length > 0) return parts.slice(0, 4).join(', ');
+  if (parts.length >= 2) return parts.slice(0, 4).join(', ');
+  if (parts.length === 1) return parts[0];
+
   return displayName?.split(',').slice(0, 4).join(', ').trim() || '';
 }
 
@@ -40,10 +52,18 @@ export async function GET(req: NextRequest) {
   const lngNum = parseFloat(lng);
   const accuracyNum = accuracy ? parseFloat(accuracy) : undefined;
 
+  // Finer zoom when GPS is accurate; broader when coarse
+  const zoom =
+    accuracyNum != null && accuracyNum <= 200
+      ? 18
+      : accuracyNum != null && accuracyNum <= 2000
+        ? 16
+        : 14;
+
   try {
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&zoom=18&addressdetails=1`,
-      { headers: NOMINATIM_HEADERS, next: { revalidate: 3600 } }
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&zoom=${zoom}&addressdetails=1`,
+      { headers: NOMINATIM_HEADERS, cache: 'no-store' }
     );
 
     if (!res.ok) {

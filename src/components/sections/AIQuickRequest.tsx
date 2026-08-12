@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Mic, Camera, Sparkles, Loader2 } from 'lucide-react';
-import { useUIStore } from '@/store/app-store';
+import { useUIStore, useAuthStore } from '@/store/app-store';
 import { cn } from '@/lib/utils';
 
 interface AIResult {
@@ -20,10 +21,12 @@ interface AIResult {
 }
 
 export function AIQuickRequest() {
+  const router = useRouter();
+  const user = useAuthStore((s) => s.user);
   const [description, setDescription] = useState('My switchboard is making sparks.');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AIResult | null>(null);
-  const { location, locationReady, openAuth, setWorkerProfileModal } = useUIStore();
+  const { location, locationReady, setWorkerProfileModal } = useUIStore();
 
   const analyze = async () => {
     if (!locationReady) return;
@@ -95,7 +98,8 @@ export function AIQuickRequest() {
           <button
             onClick={() => {
               if (result.workers[0]) setWorkerProfileModal(result.workers[0].id);
-              else openAuth('register', 'customer');
+              else if (user) router.push('/find-workers');
+              else router.push('/register');
             }}
             className="btn-gold"
           >

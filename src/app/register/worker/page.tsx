@@ -1,82 +1,127 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
-import { LocationPicker } from '@/components/location/LocationPicker';
+import { LocationControls } from '@/components/maps/LocationControls';
+import { LocationMapSection } from '@/components/maps/LocationMapSection';
+import { RegisterAccountForm, type RegisterAccountData } from '@/components/auth/RegisterAccountForm';
 import { useAuthStore, useUIStore } from '@/store/app-store';
 import { Loader2, CheckCircle, Briefcase } from 'lucide-react';
+import { requestLiveLocation } from '@/lib/location-service';
+import { api, ApiError } from '@/lib/api';
 
 const CATEGORIES = [
   'electrician', 'plumber', 'tutor', 'cleaning', 'carpenter',
   'painter', 'appliance', 'mechanic', 'beauty', 'gardening', 'pest', 'moving',
 ];
 
-const STEPS = ['Account', 'Profile', 'Verification'];
-
 export default function WorkerRegisterPage() {
-  const { openAuth, showToast, coords } = useUIStore();
+  const { showToast, location, locationReady, coords } = useUIStore();
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
+  const setJourney = useAuthStore((s) => s.setJourney);
   const router = useRouter();
-  const [step, setStep] = useState(user ? 1 : 0);
   const [loading, setLoading] = useState(false);
-  const [account, setAccount] = useState({ name: '', email: '', password: '', phone: '' });
+  const [done, setDone] = useState(false);
+  const [account, setAccount] = useState<RegisterAccountData>({ name: '', email: '', password: '', phone: '' });
   const [profile, setProfile] = useState({
     category: 'electrician',
     skills: '',
     experience: '1',
     pricing: '',
     bio: '',
-    languages: 'English, Hindi',
+    languages: 'English, Telugu',
     travelRadius: '15',
   });
 
-  const registerAccount = async () => {
+  useEffect(() => {
+    if (user?.workerProfile) {
+      router.replace('/dashboard/worker');
+    }
+  }, [user, router]);
+
+  useEffect(() => {
+    requestLiveLocation({ quiet: true, force: true });
+  }, []);
+
+  const handleAccountCreated = (registered: Record<string, unknown>) => {
+    setUser({ ...registered, location: null } as unknown as Parameters<typeof setUser>[0]);
+    setJourney('worker');
+    showToast('Account verified! Complete your professional profile below.', 'success');
+  };
+
+  const registerProfessional = async () => {
+    if (!account.name || !account.email || !account.password) {
+      showToast('Fill in name, email and password', 'error');
+      return;
+    }
+    if (!profile.skills || !profile.pricing) {
+      showToast('Add your skills and pricing', 'error');
+      return;
+    }
+    if (!locationReady || !coords.lat) {
+      showToast('Set your service location first (GPS or search)', 'error');
+      return;
+    }
+
     setLoading(true);
-    const res = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    try {
+      const data = await api.auth.registerWorker({
         ...account,
-        journey: 'worker',
-        location: coords.lat ? `${coords.lat}, ${coords.lng}` : 'Konaseema, Andhra Pradesh',
+        email: account.email.trim().toLowerCase(),
+        ...profile,
+        location,
         latitude: coords.lat,
         longitude: coords.lng,
-      }),
-    });
-    const data = await res.json();
-    setLoading(false);
-    if (res.ok) {
-      setUser(data.user);
-      setStep(1);
-      showToast('Account created! Complete your professional profile.', 'success');
-    } else {
-      showToast(data.error || 'Registration failed', 'error');
+        serviceAreas: location.split(',')[0],
+      });
+
+      setUser({ ...data.user, location: null } as unknown as Parameters<typeof setUser>[0]);
+      setJourney('worker');
+      setDone(true);
+      showToast('You are registered! Customers can now find you nearby.', 'success');
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : 'Registration failed', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const submitProfile = async () => {
-    if (!user && step === 0) { openAuth('register', 'worker'); return; }
+  const completeExistingProfile = async () => {
+    if (!user) return;
+    if (!locationReady || !coords.lat) {
+      showToast('Set your service location first', 'error');
+      return;
+    }
     setLoading(true);
-    const res = await fetch(`/api/workers/${user!.id}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    try {
+      await api.location.update({
+        location,
+        latitude: coords.lat,
+        longitude: coords.lng,
+      });
+      await api.workers.createProfile(user.id, {
         ...profile,
-        serviceAreas: 'Local area',
-      }),
-    });
-    setLoading(false);
-    if (res.ok) {
-      setStep(2);
-      showToast('Profile submitted for verification!', 'success');
-      const me = await fetch('/api/auth/me').then((r) => r.json());
-      if (me.user) setUser(me.user);
-    } else {
-      const data = await res.json();
-      showToast(data.error || 'Profile submission failed', 'error');
+        serviceAreas: location.split(',')[0],
+      });
+      const me = await api.auth.me();
+      if (me.user) setUser(me.user as unknown as Parameters<typeof setUser>[0]);
+      setDone(true);
+      showToast('Professional profile created!', 'success');
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : 'Profile submission failed', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onSubmit = () => {
+    if (user && !user.workerProfile) {
+      completeExistingProfile();
+    } else if (!user) {
+      registerProfessional();
     }
   };
 
@@ -85,105 +130,130 @@ export default function WorkerRegisterPage() {
       <Navbar />
       <div className="pt-24 pb-12 mx-auto max-w-2xl px-4">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600 mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-teal-600 mb-4">
             <Briefcase size={32} className="text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-900">Join as a Professional</h1>
-          <p className="text-slate-500 mt-2">Enroll manually, get verified, and receive booking notifications</p>
-        </div>
-
-        {/* Step indicator */}
-        <div className="flex justify-center gap-4 mb-8">
-          {STEPS.map((s, i) => (
-            <div key={s} className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${i <= step ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500'}`}>
-                {i < step ? <CheckCircle size={16} /> : i + 1}
-              </div>
-              <span className={`text-sm font-medium ${i <= step ? 'text-slate-900' : 'text-slate-400'}`}>{s}</span>
-              {i < STEPS.length - 1 && <div className="w-8 h-0.5 bg-slate-200" />}
-            </div>
-          ))}
+          <h1 className="text-3xl font-bold text-slate-900">Register as a Professional</h1>
+          <p className="text-slate-500 mt-2">
+            Password, email code, or mobile OTP — then complete your profile
+          </p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
-          {step === 0 && !user && (
-            <div className="space-y-4">
-              <h2 className="font-semibold text-lg">Create Your Account</h2>
-              {['name', 'email', 'phone', 'password'].map((field) => (
-                <input
-                  key={field}
-                  type={field === 'password' ? 'password' : field === 'email' ? 'email' : 'text'}
-                  placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
-                  value={account[field as keyof typeof account]}
-                  onChange={(e) => setAccount({ ...account, [field]: e.target.value })}
-                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                />
-              ))}
-              <div className="pt-2">
-                <p className="text-sm font-medium text-slate-700 mb-3">Service Location</p>
-                <LocationPicker showMap compact />
-              </div>
-              <button onClick={registerAccount} disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2">
-                {loading && <Loader2 size={16} className="animate-spin" />} Create Account & Continue
-              </button>
-              <p className="text-center text-sm text-slate-500">
-                Already registered? <button onClick={() => openAuth('login', 'worker')} className="text-blue-600 font-medium">Log in</button>
-              </p>
-            </div>
-          )}
-
-          {(step === 1 || (step === 0 && user)) && (
-            <div className="space-y-4">
-              <h2 className="font-semibold text-lg">Professional Profile</h2>
-              <select
-                value={profile.category}
-                onChange={(e) => setProfile({ ...profile, category: e.target.value })}
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm"
-              >
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
-                ))}
-              </select>
-              <input placeholder="Skills (e.g. Wiring, Switchboards, LED Installation)" value={profile.skills}
-                onChange={(e) => setProfile({ ...profile, skills: e.target.value })}
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm" />
-              <div className="grid grid-cols-2 gap-4">
-                <input type="number" placeholder="Years of experience" value={profile.experience}
-                  onChange={(e) => setProfile({ ...profile, experience: e.target.value })}
-                  className="rounded-xl border border-slate-200 px-4 py-3 text-sm" />
-                <input placeholder="Pricing (e.g. ₹400 visit + ₹200/hr)" value={profile.pricing}
-                  onChange={(e) => setProfile({ ...profile, pricing: e.target.value })}
-                  className="rounded-xl border border-slate-200 px-4 py-3 text-sm" />
-              </div>
-              <textarea placeholder="Brief bio about your experience" value={profile.bio}
-                onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm min-h-[80px]" />
-              <input placeholder="Languages spoken" value={profile.languages}
-                onChange={(e) => setProfile({ ...profile, languages: e.target.value })}
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm" />
-              <LocationPicker showMap compact />
-              <button onClick={submitProfile} disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2">
-                {loading && <Loader2 size={16} className="animate-spin" />} Submit for Verification
-              </button>
-            </div>
-          )}
-
-          {step === 2 && (
+          {done ? (
             <div className="text-center py-6">
               <CheckCircle size={64} className="mx-auto text-green-500 mb-4" />
-              <h2 className="text-xl font-bold text-slate-900 mb-2">Profile Submitted!</h2>
-              <p className="text-slate-500 mb-6">Your profile is under review. You&apos;ll receive notifications when customers book you.</p>
-              <div className="space-y-2 text-sm text-left bg-slate-50 rounded-xl p-4 mb-6">
-                {['Profile Submitted', 'Documents Under Review', 'Skills Verified', 'Account Approved', 'Ready to Find Work'].map((s, i) => (
-                  <div key={s} className="flex items-center gap-2">
-                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${i === 0 ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-500'}`}>
-                      {i === 0 ? '✓' : i + 1}
-                    </div>
-                    <span className={i === 0 ? 'text-green-700 font-medium' : 'text-slate-500'}>{s}</span>
-                  </div>
-                ))}
+              <h2 className="text-xl font-bold text-slate-900 mb-2">You&apos;re live on LocalPro!</h2>
+              <p className="text-slate-500 mb-6">
+                Customers near your location can discover and book you.
+              </p>
+              <button
+                type="button"
+                onClick={() => router.push('/dashboard/worker')}
+                className="rounded-xl bg-teal-600 px-6 py-3 text-sm font-semibold text-white hover:bg-teal-700"
+              >
+                Go to Professional Dashboard
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {!user && (
+                <div className="space-y-4">
+                  <h2 className="font-semibold text-lg">Account</h2>
+                  <RegisterAccountForm
+                    variant="professional"
+                    journey="worker"
+                    embedded
+                    onSuccess={handleAccountCreated}
+                    onAccountChange={setAccount}
+                    footer={
+                      <p className="text-center text-sm text-slate-500">
+                        Already a user?{' '}
+                        <Link href="/login/professional" className="text-teal-600 font-medium hover:underline">
+                          Sign in
+                        </Link>
+                      </p>
+                    }
+                  />
+                </div>
+              )}
+
+              {user && !user.workerProfile && (
+                <p className="text-sm text-teal-700 bg-teal-50 rounded-xl px-4 py-3">
+                  Signed in as <strong>{user.name}</strong>. Complete your professional profile below.
+                </p>
+              )}
+
+              <div className="space-y-4">
+                <h2 className="font-semibold text-lg">Professional profile</h2>
+                <select
+                  value={profile.category}
+                  onChange={(e) => setProfile({ ...profile, category: e.target.value })}
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm"
+                >
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c.charAt(0).toUpperCase() + c.slice(1)}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  placeholder="Skills (e.g. Wiring, Switchboards, LED Installation)"
+                  value={profile.skills}
+                  onChange={(e) => setProfile({ ...profile, skills: e.target.value })}
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm"
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="Years experience"
+                    value={profile.experience}
+                    onChange={(e) => setProfile({ ...profile, experience: e.target.value })}
+                    className="rounded-xl border border-slate-200 px-4 py-3 text-sm"
+                  />
+                  <input
+                    placeholder="Pricing (e.g. ₹400 visit + ₹200/hr)"
+                    value={profile.pricing}
+                    onChange={(e) => setProfile({ ...profile, pricing: e.target.value })}
+                    className="rounded-xl border border-slate-200 px-4 py-3 text-sm"
+                  />
+                </div>
+                <textarea
+                  placeholder="Brief bio"
+                  value={profile.bio}
+                  onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm min-h-[80px]"
+                />
+                <input
+                  placeholder="Languages"
+                  value={profile.languages}
+                  onChange={(e) => setProfile({ ...profile, languages: e.target.value })}
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm"
+                />
               </div>
-              <button onClick={() => router.push('/dashboard/worker')} className="btn-primary">Go to Worker Dashboard</button>
+
+              <div>
+                <h2 className="font-semibold text-lg mb-3">Service location</h2>
+                <p className="text-sm text-slate-500 mb-3">
+                  Where you work — customers find you by distance from this point.
+                </p>
+                <LocationControls compact className="mb-4" />
+                <LocationMapSection compact height="260px" searchRadiusKm={15} />
+              </div>
+
+              <button
+                type="button"
+                onClick={onSubmit}
+                disabled={
+                  loading ||
+                  (!user && (!account.name.trim() || !account.email.trim() || !account.password))
+                }
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-teal-600 py-3 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
+              >
+                {loading && <Loader2 size={16} className="animate-spin" />}
+                {user && !user.workerProfile ? 'Create Professional Profile' : 'Register & Go Live'}
+              </button>
             </div>
           )}
         </div>

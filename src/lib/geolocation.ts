@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { resolveLocationLabel } from '@/lib/location-utils';
+import { resolveLocationLabel, POPULAR_CITIES } from '@/lib/location-utils';
 
 export interface GeoCoords {
   lat: number;
@@ -14,6 +14,25 @@ export interface GeoLocation {
   lng: number;
   label: string;
   accuracy?: number;
+}
+
+const PRECISE_M = 65;
+const GOOD_M = 150;
+
+function isValidReading(c: GeoCoords): boolean {
+  return (
+    Number.isFinite(c.lat) &&
+    Number.isFinite(c.lng) &&
+    Math.abs(c.lat) <= 90 &&
+    Math.abs(c.lng) <= 180 &&
+    !(c.lat === 0 && c.lng === 0)
+  );
+}
+
+function pickBest(a: GeoCoords | null, b: GeoCoords | null): GeoCoords | null {
+  if (!a || !isValidReading(a)) return b && isValidReading(b) ? b : null;
+  if (!b || !isValidReading(b)) return a;
+  return (a.accuracy ?? Infinity) <= (b.accuracy ?? Infinity) ? a : b;
 }
 
 function getPosition(options: PositionOptions): Promise<GeoCoords> {
@@ -31,25 +50,42 @@ function getPosition(options: PositionOptions): Promise<GeoCoords> {
   });
 }
 
-function watchBestPosition(timeoutMs: number): Promise<GeoCoords> {
+async function tryGetPosition(options: PositionOptions): Promise<GeoCoords | null> {
+  try {
+    const reading = await getPosition(options);
+    return isValidReading(reading) ? reading : null;
+  } catch {
+    return null;
+  }
+}
+
+function watchForFix(
+  timeoutMs: number,
+  highAccuracy: boolean,
+  goodEnoughM?: number
+): Promise<GeoCoords> {
   return new Promise((resolve, reject) => {
     let best: GeoCoords | null = null;
     let watchId = -1;
+    let settled = false;
 
     const cleanup = () => {
       if (watchId >= 0) navigator.geolocation.clearWatch(watchId);
     };
 
     const finish = (result: GeoCoords) => {
+      if (settled) return;
+      settled = true;
       cleanup();
+      clearTimeout(timer);
       resolve(result);
     };
 
     const timer = setTimeout(() => {
-      if (best) finish(best);
+      if (best && isValidReading(best)) finish(best);
       else {
         cleanup();
-        reject(Object.assign(new Error('timeout'), { code: 3 }));
+        if (!settled) reject(Object.assign(new Error('timeout'), { code: 3 }));
       }
     }, timeoutMs);
 
@@ -60,21 +96,14 @@ function watchBestPosition(timeoutMs: number): Promise<GeoCoords> {
           lng: pos.coords.longitude,
           accuracy: pos.coords.accuracy,
         };
-        if (!best || (reading.accuracy ?? Infinity) < (best.accuracy ?? Infinity)) {
-          best = reading;
-        }
-        if (reading.accuracy != null && reading.accuracy <= 100) {
-          clearTimeout(timer);
+        if (!isValidReading(reading)) return;
+        best = pickBest(best, reading);
+        if (goodEnoughM != null && (reading.accuracy ?? Infinity) <= goodEnoughM) {
           finish(reading);
         }
       },
-      (err) => {
-        clearTimeout(timer);
-        cleanup();
-        if (best) resolve(best);
-        else reject(err);
-      },
-      { enableHighAccuracy: true, maximumAge: 0, timeout: timeoutMs }
+      () => {},
+      { enableHighAccuracy: highAccuracy, maximumAge: 0, timeout: timeoutMs }
     );
   });
 }
@@ -82,23 +111,20 @@ function watchBestPosition(timeoutMs: number): Promise<GeoCoords> {
 function geolocationErrorMessage(err: GeolocationPositionError): string {
   switch (err.code) {
     case 1:
-      return 'Location permission denied. Allow location in your browser settings, then tap Use my location.';
+      return 'Location permission denied. Click the lock icon in your browser address bar and allow location.';
     case 2:
       return 'Location unavailable. Enable Location in Windows Settings → Privacy, or search your city below.';
     case 3:
-      return 'Location timed out. Try again near a window, or search your city manually.';
+      return 'GPS timed out. Allow location permission, or search your city using the box above.';
     default:
-      return 'Could not get GPS. Search your city or area instead.';
+      return 'Could not get location. Search your city or area instead.';
   }
 }
 
-function pickBest(a: GeoCoords | null, b: GeoCoords | null): GeoCoords | null {
-  if (!a) return b;
-  if (!b) return a;
-  return (a.accuracy ?? Infinity) <= (b.accuracy ?? Infinity) ? a : b;
-}
-
-/** Get the best available GPS reading. Always requests fresh coordinates. */
+/**
+ * Tiered GPS: high-accuracy first, then network/Wi‑Fi fallback (works on Windows desktop).
+ * Never fails if any valid coordinate source responds.
+ */
 export async function getCurrentPositionAsync(): Promise<GeoCoords> {
   if (typeof navigator === 'undefined' || !navigator.geolocation) {
     throw new Error('Geolocation is not supported by your browser');
@@ -107,38 +133,107 @@ export async function getCurrentPositionAsync(): Promise<GeoCoords> {
     throw new Error('Location requires HTTPS or localhost');
   }
 
-  const attempts: PositionOptions[] = [
-    { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 },
-    { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
-    { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 },
-  ];
-
-  let best: GeoCoords | null = null;
+  const state: { best: GeoCoords | null } = { best: null };
   let lastError: GeolocationPositionError | null = null;
 
-  for (const options of attempts) {
+  const merge = (reading: GeoCoords | null) => {
+    if (!reading || !isValidReading(reading)) return;
+    const current = state.best;
+    if (!current || (reading.accuracy ?? Infinity) < (current.accuracy ?? Infinity)) {
+      state.best = reading;
+    }
+  };
+
+  // ── Tier 1: parallel fast sources ──────────────────────────────────────
+  const [freshHigh, cachedHigh, freshLow, cachedLow] = await Promise.all([
+    tryGetPosition({ enableHighAccuracy: true, maximumAge: 0, timeout: 8000 }),
+    tryGetPosition({ enableHighAccuracy: true, maximumAge: 60000, timeout: 4000 }),
+    tryGetPosition({ enableHighAccuracy: false, maximumAge: 0, timeout: 8000 }),
+    tryGetPosition({ enableHighAccuracy: false, maximumAge: 300000, timeout: 4000 }),
+  ]);
+
+  merge(freshHigh);
+  merge(cachedHigh);
+  merge(freshLow);
+  merge(cachedLow);
+
+  let acc = state.best?.accuracy ?? Infinity;
+  if (state.best && acc <= GOOD_M) return state.best;
+
+  // ── Tier 2: high-accuracy watch (phones / laptops with GPS) ─────────────
+  if (!state.best || acc > GOOD_M) {
     try {
-      const reading = await getPosition(options);
-      best = pickBest(best, reading);
-      if (reading.accuracy != null && reading.accuracy <= 500) {
-        return reading;
-      }
+      merge(await watchForFix(7000, true, PRECISE_M));
+      acc = state.best?.accuracy ?? Infinity;
+      if (state.best && acc <= GOOD_M) return state.best;
     } catch (err) {
       lastError = err as GeolocationPositionError;
-      if (lastError.code === 1) break;
     }
   }
 
-  try {
-    const watched = await watchBestPosition(20000);
-    best = pickBest(best, watched);
-  } catch (err) {
-    if (!best) lastError = err as GeolocationPositionError;
+  // ── Tier 3: network/Wi‑Fi watch — critical for Windows desktop ─────────
+  acc = state.best?.accuracy ?? Infinity;
+  if (!state.best || acc > 2000) {
+    try {
+      merge(await watchForFix(6000, false));
+    } catch (err) {
+      lastError = err as GeolocationPositionError;
+    }
   }
 
-  if (best) return best;
+  if (state.best && isValidReading(state.best)) return state.best;
 
-  throw new Error(geolocationErrorMessage(lastError ?? ({ code: 0 } as GeolocationPositionError)));
+  // ── Tier 4: one last low-accuracy attempt with long cache ───────────────
+  const lastResort = await tryGetPosition({
+    enableHighAccuracy: false,
+    maximumAge: 600000,
+    timeout: 10000,
+  });
+  if (lastResort) return lastResort;
+
+  throw new Error(geolocationErrorMessage(lastError ?? ({ code: 3 } as GeolocationPositionError)));
+}
+
+/** Keep refining after initial fix; calls onBetter when accuracy improves. */
+export function refinePosition(
+  baseline: GeoCoords,
+  onBetter: (reading: GeoCoords) => void,
+  maxMs = 12000
+): () => void {
+  if (typeof navigator === 'undefined' || !navigator.geolocation) return () => {};
+
+  let best = baseline;
+  const baselineAcc = baseline.accuracy ?? Infinity;
+
+  const watchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      const reading: GeoCoords = {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+      };
+      if (!isValidReading(reading)) return;
+
+      const acc = reading.accuracy ?? Infinity;
+      if (acc >= baselineAcc - 10 && acc > PRECISE_M) return;
+
+      if (acc < (best.accuracy ?? Infinity)) {
+        best = reading;
+        onBetter(reading);
+      }
+    },
+    () => {},
+    { enableHighAccuracy: true, maximumAge: 0, timeout: maxMs }
+  );
+
+  const timer = setTimeout(() => {
+    navigator.geolocation.clearWatch(watchId);
+  }, maxMs);
+
+  return () => {
+    clearTimeout(timer);
+    navigator.geolocation.clearWatch(watchId);
+  };
 }
 
 export async function detectCurrentLocation(): Promise<GeoLocation> {
@@ -172,7 +267,9 @@ export function useGeolocation() {
 export async function reverseGeocode(lat: number, lng: number, accuracy?: number): Promise<string> {
   try {
     const q = accuracy != null ? `&accuracy=${accuracy}` : '';
-    const res = await fetch(`/api/geocode/reverse?lat=${lat}&lng=${lng}${q}`);
+    const res = await fetch(`/api/geocode/reverse?lat=${lat}&lng=${lng}${q}`, {
+      cache: 'no-store',
+    });
     if (!res.ok) return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
     const data = await res.json();
     return data.label || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
@@ -199,7 +296,9 @@ export async function resolveLocationFromGps(pos: GeoCoords): Promise<GeoLocatio
 
 export async function geocodeAddress(query: string): Promise<GeoCoords | null> {
   try {
-    const res = await fetch(`/api/geocode/search?q=${encodeURIComponent(query)}`);
+    const res = await fetch(`/api/geocode/search?q=${encodeURIComponent(query)}`, {
+      cache: 'no-store',
+    });
     if (!res.ok) return null;
     const data = await res.json();
     if (!data.result) return null;
@@ -211,7 +310,9 @@ export async function geocodeAddress(query: string): Promise<GeoCoords | null> {
 
 export async function geocodeAddressWithLabel(query: string): Promise<GeoLocation | null> {
   try {
-    const res = await fetch(`/api/geocode/search?q=${encodeURIComponent(query)}`);
+    const res = await fetch(`/api/geocode/search?q=${encodeURIComponent(query)}`, {
+      cache: 'no-store',
+    });
     if (!res.ok) return null;
     const data = await res.json();
     if (!data.result) return null;
@@ -220,8 +321,6 @@ export async function geocodeAddressWithLabel(query: string): Promise<GeoLocatio
     return null;
   }
 }
-
-import { POPULAR_CITIES } from './location-utils';
 
 export const CITY_COORDS: Record<string, GeoCoords> = Object.fromEntries(
   POPULAR_CITIES.map((c) => [c.label, { lat: c.lat, lng: c.lng }])

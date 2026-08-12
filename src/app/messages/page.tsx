@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
-import { useAuthStore, useUIStore } from '@/store/app-store';
+import { useAuthStore } from '@/store/app-store';
 import { Send, Bot, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { suggestMessage } from '@/lib/ai';
@@ -23,8 +24,9 @@ interface Conversation {
 }
 
 export default function MessagesPage() {
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
-  const { openAuth } = useUIStore();
+  const authReady = useAuthStore((s) => s.authReady);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selected, setSelected] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -32,7 +34,8 @@ export default function MessagesPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!user) { openAuth('login'); return; }
+    if (!authReady) return;
+    if (!user) { router.replace('/login'); return; }
     fetch('/api/messages')
       .then((r) => r.json())
       .then((d) => {
@@ -45,7 +48,7 @@ export default function MessagesPage() {
         });
         setConversations(Array.from(convMap.values()));
       });
-  }, [user, openAuth]);
+  }, [user, authReady, router]);
 
   useEffect(() => {
     if (!selected || !user) return;

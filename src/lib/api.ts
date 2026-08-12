@@ -31,13 +31,28 @@ export const api = {
 
   auth: {
     me: () => request<{ user: Record<string, unknown> | null }>('/api/auth/me'),
-    login: (email: string, password: string) =>
+    login: (email: string, password: string, rememberMe?: boolean) =>
       request<{ user: Record<string, unknown> }>('/api/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, rememberMe: !!rememberMe }),
+      }),
+    forgotPassword: (email: string) =>
+      request<{ success: boolean; message: string }>('/api/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      }),
+    resetPassword: (token: string, password: string) =>
+      request<{ user: Record<string, unknown>; message: string }>('/api/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({ token, password }),
       }),
     register: (data: Record<string, unknown>) =>
       request<{ user: Record<string, unknown> }>('/api/auth/register', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    registerWorker: (data: Record<string, unknown>) =>
+      request<{ user: Record<string, unknown> }>('/api/auth/register/worker', {
         method: 'POST',
         body: JSON.stringify(data),
       }),

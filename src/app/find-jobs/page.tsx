@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { LocationControls } from '@/components/maps/LocationControls';
 import { useUIStore, useAuthStore } from '@/store/app-store';
@@ -28,9 +29,16 @@ interface Job {
 }
 
 export default function FindJobsPage() {
-  const { coords, locationReady, openAuth, showToast } = useUIStore();
+  const router = useRouter();
+  const authReady = useAuthStore((s) => s.authReady);
+  const { coords, locationReady, showToast } = useUIStore();
   const user = useAuthStore((s) => s.user);
   const [jobs, setJobs] = useState<Job[]>([]);
+
+  useEffect(() => {
+    if (!authReady) return;
+    if (!user) router.replace('/register/worker');
+  }, [authReady, user, router]);
 
   useEffect(() => {
     if (!locationReady) return;
@@ -41,7 +49,7 @@ export default function FindJobsPage() {
 
   const apply = async (jobId: string) => {
     if (!user) {
-      openAuth('login', 'worker');
+      router.push('/login/professional');
       return;
     }
     const res = await fetch('/api/applications', {
@@ -66,6 +74,8 @@ export default function FindJobsPage() {
     subtitle: `${j.budget} · ${j.distance} km`,
     type: 'job' as const,
   }));
+
+  if (!authReady || !user) return null;
 
   return (
     <div className="min-h-screen bg-slate-50">

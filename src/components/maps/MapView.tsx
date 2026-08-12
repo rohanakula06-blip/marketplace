@@ -60,17 +60,22 @@ function MapController({
   fly: boolean;
 }) {
   const map = useMap();
-  const prev = useRef(center);
+  const prev = useRef({ lat: center[0], lng: center[1], zoom });
 
   useEffect(() => {
-    const moved = prev.current[0] !== center[0] || prev.current[1] !== center[1];
+    const moved =
+      prev.current.lat !== center[0] ||
+      prev.current.lng !== center[1] ||
+      prev.current.zoom !== zoom;
+
     if (!moved) return;
+
     if (fly) {
-      map.flyTo(center, zoom, { duration: 0.8 });
+      map.flyTo(center, zoom, { duration: 0.65 });
     } else {
-      map.setView(center, zoom);
+      map.setView(center, zoom, { animate: false });
     }
-    prev.current = center;
+    prev.current = { lat: center[0], lng: center[1], zoom };
   }, [center, zoom, map, fly]);
 
   return null;
@@ -119,6 +124,7 @@ export default function MapView({
   return (
     <div className={cn('relative rounded-2xl overflow-hidden border border-slate-200 shadow-lg', className)} style={{ height }}>
       <MapContainer
+        key={`map-${center[0].toFixed(4)}-${center[1].toFixed(4)}`}
         center={center}
         zoom={effectiveZoom}
         style={{ height: '100%', width: '100%' }}

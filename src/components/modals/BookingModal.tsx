@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
 
 export function BookingModal() {
-  const { bookingModal, selectedWorkerId, setBookingModal, showToast, openAuth } = useUIStore();
+  const { bookingModal, selectedWorkerId, setBookingModal, showToast } = useUIStore();
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
   const [worker, setWorker] = useState<{ name: string; category: string; pricing: string } | null>(null);
@@ -30,7 +30,7 @@ export function BookingModal() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) { openAuth('login', 'customer'); return; }
+    if (!user) { router.push('/login'); return; }
     setLoading(true);
     try {
       await api.bookings.create({ ...form, workerId: selectedWorkerId });

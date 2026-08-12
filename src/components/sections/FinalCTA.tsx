@@ -1,9 +1,13 @@
 'use client';
 
-import { useUIStore } from '@/store/app-store';
+import Link from 'next/link';
+import { useAuthStore, useUIStore } from '@/store/app-store';
 
 export function FinalCTA() {
-  const { openAuth, setInfoModal } = useUIStore();
+  const user = useAuthStore((s) => s.user);
+  const { setInfoModal } = useUIStore();
+  const findWorkerHref = user ? (user.workerProfile ? '/find-workers' : '/dashboard/customer') : '/register';
+  const findWorkHref = user ? (user.workerProfile ? '/dashboard/worker' : '/register/worker') : '/register/worker';
 
   return (
     <section className="section-padding relative overflow-hidden">
@@ -19,8 +23,8 @@ export function FinalCTA() {
           Whether you need trusted help or want to offer your skills, LocalPro brings your neighbourhood together.
         </p>
         <div className="flex flex-wrap justify-center gap-4">
-          <button onClick={() => openAuth('register', 'customer')} className="btn-primary text-lg px-8 py-4">Find a Worker</button>
-          <button onClick={() => openAuth('register', 'worker')} className="rounded-xl bg-gradient-to-r from-teal-600 to-teal-500 px-8 py-4 text-lg font-semibold hover:shadow-lg hover:shadow-teal-500/30 transition-all">Find Work</button>
+          <Link href={findWorkerHref} className="btn-primary text-lg px-8 py-4">Find a Worker</Link>
+          <Link href={findWorkHref} className="rounded-xl bg-gradient-to-r from-teal-600 to-teal-500 px-8 py-4 text-lg font-semibold hover:shadow-lg hover:shadow-teal-500/30 transition-all">Find Work</Link>
           <button onClick={() => setInfoModal('ai')} className="btn-gold text-lg px-8 py-4">Try AI Matching</button>
         </div>
       </div>

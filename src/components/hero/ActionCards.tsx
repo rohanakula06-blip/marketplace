@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 
 export function ActionCards() {
   const [hovered, setHovered] = useState<'customer' | 'worker' | null>(null);
-  const { openAuth, setAuthIntent } = useUIStore();
+  const { setAuthIntent } = useUIStore();
   const user = useAuthStore((s) => s.user);
   const setJourney = useAuthStore((s) => s.setJourney);
   const router = useRouter();
@@ -16,10 +16,16 @@ export function ActionCards() {
   const handleClick = (journey: 'customer' | 'worker') => {
     setAuthIntent(journey);
     setJourney(journey);
-    if (user) {
-      router.push(journey === 'customer' ? '/find-workers' : '/find-jobs');
+    if (!user) {
+      router.push(journey === 'customer' ? '/register' : '/register/worker');
+      return;
+    }
+    if (journey === 'customer') {
+      router.push('/find-workers');
+    } else if (user.workerProfile) {
+      router.push('/dashboard/worker');
     } else {
-      openAuth('register', journey);
+      router.push('/register/worker');
     }
   };
 

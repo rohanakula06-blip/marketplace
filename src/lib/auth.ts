@@ -4,7 +4,8 @@ import { cookies } from 'next/headers';
 import prisma from './db';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'localpro-secret';
-const TOKEN_EXPIRY = '7d';
+const SESSION_SHORT_MS = 24 * 60 * 60 * 1000;
+const SESSION_LONG_MS = 30 * 24 * 60 * 60 * 1000;
 
 export type SessionClaims = {
   email: string;
@@ -41,8 +42,9 @@ export async function verifyPassword(password: string, hash: string) {
   return bcrypt.compare(password, hash);
 }
 
-export function signToken(userId: string, claims: SessionClaims) {
-  return jwt.sign({ userId, ...claims }, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
+export function signToken(userId: string, claims: SessionClaims, rememberMe = false) {
+  const expiresIn = rememberMe ? '30d' : '1d';
+  return jwt.sign({ userId, ...claims }, JWT_SECRET, { expiresIn });
 }
 
 export function verifyToken(token: string): TokenPayload | null {
@@ -72,15 +74,16 @@ function userFromTokenClaims(payload: TokenPayload): AuthUser | null {
   };
 }
 
-export async function createSession(userId: string, claims: SessionClaims) {
-  const token = signToken(userId, claims);
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+export async function createSession(userId: string, claims: SessionClaims, rememberMe = false) {
+  const token = signToken(userId, claims, rememberMe);
+  const ms = rememberMe ? SESSION_LONG_MS : SESSION_SHORT_MS;
+  const expiresAt = new Date(Date.now() + ms);
   try {
     await prisma.session.create({ data: { userId, token, expiresAt } });
   } catch {
     // Session write can fail on read-only/ephemeral serverless storage; JWT cookie still authenticates.
   }
-  return { token, expiresAt };
+  return { token, expiresAt, rememberMe };
 }
 
 export async function getCurrentUser(): Promise<AuthUser | null> {
@@ -122,13 +125,14 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   return userFromTokenClaims(payload);
 }
 
-export async function setAuthCookie(token: string) {
+export async function setAuthCookie(token: string, rememberMe = false) {
   const cookieStore = await cookies();
+  const maxAge = rememberMe ? 30 * 24 * 60 * 60 : 24 * 60 * 60;
   cookieStore.set('localpro_token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60,
+    maxAge,
     path: '/',
   });
 }

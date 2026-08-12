@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { useAuthStore, useUIStore } from '@/store/app-store';
 import { Star, MapPin, Plus, Bell, Loader2, Briefcase, Navigation } from 'lucide-react';
@@ -9,9 +10,10 @@ import { api, ApiError } from '@/lib/api';
 import { useDashboardLocation } from '@/hooks/useDashboardLocation';
 
 export default function CustomerDashboard() {
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const authReady = useAuthStore((s) => s.authReady);
-  const { openAuth, setWorkerProfileModal, setBookingModal, showToast } = useUIStore();
+  const { setWorkerProfileModal, setBookingModal, showToast } = useUIStore();
   const { coords, location, locationReady, syncing, initialized, syncCurrentLocation } = useDashboardLocation();
   const [workers, setWorkers] = useState<Record<string, unknown>[]>([]);
   const [bookings, setBookings] = useState<Record<string, unknown>[]>([]);
@@ -68,16 +70,20 @@ export default function CustomerDashboard() {
   useEffect(() => {
     if (!authReady) return;
     if (!user) {
-      openAuth('login', 'customer');
+      router.replace('/login');
+      return;
+    }
+    if (user.workerProfile) {
+      router.replace('/dashboard/worker');
       return;
     }
     loadData();
-  }, [user, authReady, openAuth, loadData]);
+  }, [user, authReady, router, loadData]);
 
   const postJob = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!user) {
-      openAuth('login', 'customer');
+      router.push('/login');
       return;
     }
     setPosting(true);
@@ -93,7 +99,7 @@ export default function CustomerDashboard() {
       await loadData();
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
-        openAuth('login', 'customer');
+        router.push('/login');
         showToast('Please log in to post a job', 'error');
       } else {
         showToast(err instanceof ApiError ? err.message : 'Failed to post job', 'error');

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { X, Eye, EyeOff, Loader2, Smartphone, Mail, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAuthStore, useUIStore } from '@/store/app-store';
 import { useRouter } from 'next/navigation';
@@ -22,6 +23,7 @@ export function AuthModals() {
   const [emailMode, setEmailMode] = useState<'password' | 'otp'>('password');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', password: '', phone: '' });
   const [phoneOtpSent, setPhoneOtpSent] = useState(false);
   const [emailOtpSent, setEmailOtpSent] = useState(false);
@@ -59,9 +61,17 @@ export function AuthModals() {
     resetLocationState();
     requestLiveLocation({ quiet: true, force: true });
     showToast(`Welcome, ${user.name}!`, 'success');
-    if (authIntent === 'worker') router.push('/register/worker');
-    else if (authIntent === 'customer') router.push('/find-workers');
-    else router.push('/dashboard/customer');
+
+    if (authIntent === 'worker') {
+      if (user.workerProfile) router.push('/dashboard/worker');
+      else router.push('/register/worker');
+    } else if (authIntent === 'customer') {
+      router.push('/find-workers');
+    } else if (user.role === 'worker' || user.workerProfile) {
+      router.push('/dashboard/worker');
+    } else {
+      router.push('/dashboard/customer');
+    }
   };
 
   const submitEmailPassword = async (e: React.FormEvent) => {
@@ -69,7 +79,7 @@ export function AuthModals() {
     setLoading(true);
     try {
       const data = isLogin
-        ? await api.auth.login(form.email.trim().toLowerCase(), form.password)
+        ? await api.auth.login(form.email.trim().toLowerCase(), form.password, rememberMe)
         : await api.auth.register({ ...form, email: form.email.trim().toLowerCase(), journey: authIntent });
       onAuthSuccess(data.user);
     } catch (err) {
@@ -233,11 +243,30 @@ export function AuthModals() {
                     {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
+                {isLogin && (
+                  <div className="flex items-center justify-between text-sm">
+                    <label className="flex items-center gap-2 text-slate-600 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      Remember me
+                    </label>
+                    <Link
+                      href="/forgot-password"
+                      onClick={() => setAuthModal(null)}
+                      className="text-blue-600 hover:underline"
+                    >
+                      Forgot password?
+                    </Link>
+                  </div>
+                )}
                 <button type="submit" disabled={loading} className="btn-primary w-full">
                   {loading && <Loader2 size={16} className="animate-spin inline mr-2" />}
                   {isLogin ? 'Log In with Email' : 'Create Account'}
                 </button>
-                <p className="text-xs text-slate-400 text-center">Demo: priya@demo.com / password123</p>
               </form>
             )}
           </div>

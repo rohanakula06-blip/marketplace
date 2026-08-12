@@ -112,9 +112,8 @@ export function InfoModal() {
             <StaticPage title="Help Centre">
               <p><strong>Finding a worker:</strong> Go to Find Workers, set your location, and book a verified professional.</p>
               <p><strong>Finding work:</strong> Register as a worker, then browse open jobs on Find Jobs.</p>
-              <p><strong>Login issues:</strong> Use email + password, mobile OTP, or email code from the Log In popup.</p>
+              <p><strong>Login issues:</strong> Use email + password, mobile OTP, or email code. Forgot password? Use the link on the login form.</p>
               <p><strong>Bookings:</strong> View and manage all bookings from My Bookings in the navbar.</p>
-              <p>Demo login: priya@demo.com / password123</p>
             </StaticPage>
           )}
           {infoModal === 'privacy' && (

@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Star, MapPin, Shield, MessageCircle, Filter, Loader2 } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { LocationControls } from '@/components/maps/LocationControls';
-import { useUIStore } from '@/store/app-store';
+import { useUIStore, useAuthStore } from '@/store/app-store';
 import { api } from '@/lib/api';
 import type { MapMarker } from '@/components/maps/MapView';
 
@@ -30,6 +32,9 @@ interface Worker {
 }
 
 export default function FindWorkersPage() {
+  const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const authReady = useAuthStore((s) => s.authReady);
   const { coords, location, locationReady, setBookingModal, setWorkerProfileModal, setMessageModal } = useUIStore();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [category, setCategory] = useState('');
@@ -37,6 +42,11 @@ export default function FindWorkersPage() {
 
   const nearestDistance = workers[0]?.distance;
   const noLocalWorkers = !loading && workers.length > 0 && nearestDistance != null && nearestDistance > 50;
+
+  useEffect(() => {
+    if (!authReady) return;
+    if (!user) router.replace('/register');
+  }, [authReady, user, router]);
 
   useEffect(() => {
     if (!locationReady) return;
@@ -57,6 +67,8 @@ export default function FindWorkersPage() {
     type: 'worker' as const,
   }));
 
+  if (!authReady || !user) return null;
+
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar />
@@ -66,10 +78,19 @@ export default function FindWorkersPage() {
           <p className="text-slate-500 mt-1">Map centers on your GPS location automatically</p>
         </div>
 
+        {workers.length === 0 && !loading && locationReady && (
+          <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50 px-5 py-4 text-sm text-blue-900">
+            No professionals registered near you yet.{' '}
+            <Link href="/register/worker" className="font-semibold underline">
+              Join as a professional
+            </Link>{' '}
+            to be the first in your area.
+          </div>
+        )}
+
         {noLocalWorkers && (
           <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
-            Your location looks correct ({location.split(',')[0]}), but demo professionals are seeded around{' '}
-            <strong>Konaseema</strong> only — nearest is ~{nearestDistance} km away.
+            Nearest professional is ~{nearestDistance} km away. More pros may register in your area soon.
           </div>
         )}
 

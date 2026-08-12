@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { MapPin, Clock, Users } from 'lucide-react';
 import { useUIStore } from '@/store/app-store';
 import { cn } from '@/lib/utils';
@@ -20,9 +21,10 @@ interface Job {
 }
 
 export function WorkerDashboardPreview() {
+  const router = useRouter();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [available, setAvailable] = useState(true);
-  const { openAuth, showToast } = useUIStore();
+  const { showToast } = useUIStore();
 
   useEffect(() => {
     fetch('/api/jobs?status=open')
@@ -43,7 +45,7 @@ export function WorkerDashboardPreview() {
       }),
     });
     if (res.status === 401) {
-      openAuth('login', 'worker');
+      router.push('/login/professional');
       return;
     }
     if (res.ok) showToast('Application submitted successfully!', 'success');

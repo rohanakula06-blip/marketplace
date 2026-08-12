@@ -14,14 +14,13 @@ const NAV_LINKS = [
   { href: '/', label: 'Home' },
   { href: '/find-workers', label: 'Find Workers' },
   { href: '/find-jobs', label: 'Find Jobs' },
-  { href: '/register/worker', label: 'For Workers' },
   { href: '/contact', label: 'Contact', modal: 'contact' as const },
 ];
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { location, locationReady, openAuth, setInfoModal } = useUIStore();
+  const { location, locationReady, setInfoModal } = useUIStore();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const router = useRouter();
@@ -78,15 +77,15 @@ export function Navbar() {
             <>
               <Link href="/bookings" className="text-sm text-slate-600 hover:text-blue-600 font-medium">My Bookings</Link>
               <Link href="/messages" className="text-sm text-slate-600 hover:text-blue-600 font-medium">Messages</Link>
-              <Link href={user.workerProfile ? '/dashboard/worker' : '/dashboard/customer'} className="text-sm text-slate-600 hover:text-blue-600 font-medium">Dashboard</Link>
+              <Link
+                href={user.workerProfile ? '/dashboard/worker' : '/dashboard/customer'}
+                className="text-sm font-medium text-white bg-blue-600 px-4 py-2 rounded-xl hover:bg-blue-700"
+              >
+                My Account
+              </Link>
               <button onClick={handleLogout} className="text-sm text-slate-500 hover:text-slate-800">Logout</button>
             </>
-          ) : (
-            <>
-              <button onClick={() => openAuth('login')} className="text-sm font-medium text-slate-700 px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50">Log In</button>
-              <button onClick={() => openAuth('register')} className="btn-primary text-sm !py-2 !px-5">Sign Up</button>
-            </>
-          )}
+          ) : null}
         </div>
 
         <button className="md:hidden text-slate-700" onClick={() => setMobileOpen(!mobileOpen)}>
@@ -105,8 +104,14 @@ export function Navbar() {
               <Link key={l.href} href={l.href} onClick={() => setMobileOpen(false)} className="block py-2.5 text-slate-600 hover:text-blue-600 font-medium">{l.label}</Link>
             )
           )}
-          {!user && (
-            <button onClick={() => { openAuth('register'); setMobileOpen(false); }} className="btn-primary w-full mt-2">Sign Up</button>
+          {user && (
+            <Link
+              href={user.workerProfile ? '/dashboard/worker' : '/dashboard/customer'}
+              onClick={() => setMobileOpen(false)}
+              className="block w-full text-center btn-primary mt-2"
+            >
+              My Account
+            </Link>
           )}
         </div>
       )}
@@ -156,7 +161,7 @@ export function StatsBar() {
           </div>
         ))}
       </div>
-      <p className="text-center text-xs text-slate-400 mt-4">Trusted local services marketplace — demo data for hackathon</p>
+      <p className="text-center text-xs text-slate-400 mt-4">Trusted local services marketplace</p>
     </div>
   );
 }

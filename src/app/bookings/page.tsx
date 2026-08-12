@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { useAuthStore, useUIStore } from '@/store/app-store';
 import { MapPin, Clock, Briefcase, Calendar, ChevronRight, Loader2 } from 'lucide-react';
@@ -33,8 +34,10 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function BookingsPage() {
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
-  const { openAuth, setMessageModal, setPaymentModal, showToast } = useUIStore();
+  const authReady = useAuthStore((s) => s.authReady);
+  const { setMessageModal, setPaymentModal, showToast } = useUIStore();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [role, setRole] = useState<'customer' | 'worker'>('customer');
   const [loading, setLoading] = useState(true);
@@ -45,7 +48,7 @@ export default function BookingsPage() {
       const data = await api.bookings.list(r);
       setBookings(data.bookings as unknown as Booking[]);
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) openAuth('login');
+      if (err instanceof ApiError && err.status === 401) router.push('/login');
       else showToast('Failed to load bookings from backend', 'error');
     } finally {
       setLoading(false);
@@ -53,11 +56,12 @@ export default function BookingsPage() {
   };
 
   useEffect(() => {
-    if (!user) { openAuth('login'); return; }
+    if (!authReady) return;
+    if (!user) { router.replace('/login'); return; }
     const r = user.workerProfile ? 'worker' : 'customer';
     setRole(r);
     loadBookings(r);
-  }, [user]);
+  }, [user, authReady, router]);
 
   const updateStatus = async (id: string, status: string) => {
     try {

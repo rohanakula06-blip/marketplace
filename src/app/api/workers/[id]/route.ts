@@ -66,10 +66,19 @@ export async function POST(req: NextRequest) {
       travelRadius: parseFloat(body.travelRadius) || 10,
       languages: Array.isArray(body.languages) ? body.languages.join(', ') : body.languages || 'English',
       profilePhoto: body.profilePhoto,
+      verificationStatus: 'verified',
     },
   });
 
-  await prisma.user.update({ where: { id: user.id }, data: { role: 'both' } });
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      role: 'worker',
+      ...(body.latitude != null && { latitude: Number(body.latitude) }),
+      ...(body.longitude != null && { longitude: Number(body.longitude) }),
+      ...(body.location && { location: body.location }),
+    },
+  });
 
   return NextResponse.json({ profile }, { status: 201 });
 }

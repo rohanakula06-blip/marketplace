@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { MapPin, Navigation } from 'lucide-react';
+import { MapPin, Navigation, Loader2, AlertCircle } from 'lucide-react';
 import { useCurrentLocation } from '@/hooks/useCurrentLocation';
 import { formatAccuracy } from '@/lib/location-utils';
 import type { MapMarker } from './MapView';
@@ -10,7 +10,9 @@ import { cn } from '@/lib/utils';
 const MapView = dynamic(() => import('./MapView'), {
   ssr: false,
   loading: () => (
-    <div className="h-full min-h-[280px] rounded-2xl bg-slate-100 animate-pulse" />
+    <div className="h-full min-h-[280px] rounded-2xl bg-slate-100 animate-pulse flex items-center justify-center text-slate-400 text-sm">
+      Loading map…
+    </div>
   ),
 });
 
@@ -33,19 +35,26 @@ export function LocationMapSection({
   footer,
   compact = false,
 }: LocationMapSectionProps) {
-  const { coords, location, accuracy, useGps, locationReady } = useCurrentLocation();
+  const { coords, location, accuracy, useGps, locationReady, isDetecting, error } = useCurrentLocation();
 
   const accuracyLabel = formatAccuracy(accuracy ?? undefined);
+  const hasValidCoords =
+    locationReady && Number.isFinite(coords.lat) && Number.isFinite(coords.lng) && !(coords.lat === 0 && coords.lng === 0);
 
   return (
     <div className={cn('space-y-3', className)}>
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
         <div className="flex items-start gap-3 min-w-0">
-          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-700">
-            <MapPin size={18} />
+          <div
+            className={cn(
+              'mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full',
+              hasValidCoords ? 'bg-green-100 text-green-700' : isDetecting ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'
+            )}
+          >
+            {isDetecting ? <Loader2 size={18} className="animate-spin" /> : <MapPin size={18} />}
           </div>
           <div className="min-w-0">
-            {locationReady ? (
+            {hasValidCoords ? (
               <>
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Your location</p>
                 <p className="font-semibold text-slate-900 truncate">{location}</p>
@@ -54,8 +63,21 @@ export function LocationMapSection({
                   {accuracyLabel ? ` · ${accuracyLabel}` : ''}
                 </p>
               </>
+            ) : isDetecting ? (
+              <>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Detecting</p>
+                <p className="text-sm text-slate-600">Getting your GPS position…</p>
+              </>
+            ) : error ? (
+              <>
+                <p className="text-xs font-medium uppercase tracking-wide text-red-500">GPS unavailable</p>
+                <p className="text-sm text-slate-600">{error}</p>
+              </>
             ) : (
-              <p className="text-sm text-slate-400">—</p>
+              <>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Location</p>
+                <p className="text-sm text-slate-500">Tap the button to use GPS, or search your city above</p>
+              </>
             )}
           </div>
         </div>
@@ -63,15 +85,23 @@ export function LocationMapSection({
         <button
           type="button"
           onClick={() => useGps()}
-          className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 shrink-0"
+          disabled={isDetecting}
+          className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 shrink-0 disabled:opacity-60"
         >
-          <Navigation size={16} />
-          {compact ? 'Refresh' : 'Use my location'}
+          {isDetecting ? <Loader2 size={16} className="animate-spin" /> : <Navigation size={16} />}
+          {compact ? 'Refresh GPS' : 'Use my location'}
         </button>
       </div>
 
+      {error && !hasValidCoords && !isDetecting && (
+        <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <AlertCircle size={16} className="shrink-0 mt-0.5" />
+          <span>Search your city or area above, or allow location permission and try again.</span>
+        </div>
+      )}
+
       <div className="relative">
-        {locationReady ? (
+        {hasValidCoords ? (
           <MapView
             center={[coords.lat, coords.lng]}
             markers={markers}
@@ -80,10 +110,35 @@ export function LocationMapSection({
             height={height}
             onMarkerClick={onMarkerClick}
             onRecenter={() => useGps()}
+            recentering={isDetecting}
             animateCenter
           />
         ) : (
-          <div className="rounded-2xl bg-slate-100 animate-pulse" style={{ height }} />
+          <div
+            className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center gap-3 text-center px-6"
+            style={{ height }}
+          >
+            {isDetecting ? (
+              <>
+                <Loader2 size={28} className="animate-spin text-blue-500" />
+                <p className="text-sm text-slate-600">Pinpointing your location on the map…</p>
+              </>
+            ) : (
+              <>
+                <MapPin size={28} className="text-slate-400" />
+                <p className="text-sm text-slate-600 max-w-xs">
+                  Map appears once GPS or a city search sets your location precisely.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => useGps()}
+                  className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                >
+                  Use my location
+                </button>
+              </>
+            )}
+          </div>
         )}
       </div>
 

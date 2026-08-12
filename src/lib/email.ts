@@ -45,6 +45,23 @@ function welcomeEmailHtml(name: string): string {
   `;
 }
 
+function passwordResetEmailHtml(name: string, resetUrl: string): string {
+  return `
+    <div style="font-family: 'Segoe UI', sans-serif; max-width: 480px; margin: 0 auto; padding: 32px; background: #f8fafc; border-radius: 16px;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <div style="display: inline-block; background: #1d4ed8; color: white; font-weight: bold; padding: 12px 20px; border-radius: 12px; font-size: 18px;">LocalPro</div>
+      </div>
+      <h2 style="color: #0f172a; text-align: center; margin-bottom: 8px;">Reset Your Password</h2>
+      <p style="color: #64748b; text-align: center; margin-bottom: 24px;">Hi ${name}, click the button below to choose a new password. This link expires in 1 hour.</p>
+      <div style="text-align: center; margin-bottom: 24px;">
+        <a href="${resetUrl}" style="display: inline-block; background: #1d4ed8; color: white; font-weight: 600; padding: 14px 28px; border-radius: 12px; text-decoration: none;">Reset Password</a>
+      </div>
+      <p style="color: #94a3b8; font-size: 12px; text-align: center; word-break: break-all;">Or copy this link: ${resetUrl}</p>
+      <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-top: 16px;">If you didn't request this, you can ignore this email.</p>
+    </div>
+  `;
+}
+
 async function sendHtmlViaResend(to: string, subject: string, html: string): Promise<void> {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -162,6 +179,27 @@ export async function sendContactEmail(data: {
   }
 
   console.log('[Contact] Email not configured. Message logged:', data);
+}
+
+export async function sendPasswordResetEmail(to: string, name: string, resetUrl: string): Promise<void> {
+  const email = normalizeEmail(to);
+  const subject = 'Reset your LocalPro password';
+  const html = passwordResetEmailHtml(name, resetUrl);
+  const text = `Hi ${name}, reset your LocalPro password using this link (expires in 1 hour): ${resetUrl}`;
+
+  if (process.env.RESEND_API_KEY) {
+    await sendHtmlViaResend(email, subject, html);
+    console.log(`[Email Resend] Password reset sent to ${email}`);
+    return;
+  }
+
+  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+    await sendHtmlViaSmtp(email, subject, html, text);
+    console.log(`[Email SMTP] Password reset sent to ${email}`);
+    return;
+  }
+
+  throw new Error('Email not configured. Add SMTP settings or RESEND_API_KEY to .env.');
 }
 
 export function getEmailProviderStatus() {

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { useAuthStore, useUIStore } from '@/store/app-store';
 import { MapPin, Clock, Briefcase, Loader2, Navigation } from 'lucide-react';
@@ -9,9 +10,10 @@ import { api } from '@/lib/api';
 import { useDashboardLocation } from '@/hooks/useDashboardLocation';
 
 export default function WorkerDashboard() {
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const authReady = useAuthStore((s) => s.authReady);
-  const { openAuth, showToast } = useUIStore();
+  const { showToast } = useUIStore();
   const { coords, location, locationReady, syncing, initialized, syncCurrentLocation } = useDashboardLocation();
   const [jobs, setJobs] = useState<Record<string, unknown>[]>([]);
   const [bookings, setBookings] = useState<Record<string, unknown>[]>([]);
@@ -45,11 +47,15 @@ export default function WorkerDashboard() {
   useEffect(() => {
     if (!authReady) return;
     if (!user) {
-      openAuth('login', 'worker');
+      router.replace('/login/professional');
+      return;
+    }
+    if (!user.workerProfile && user.role !== 'worker') {
+      router.replace('/dashboard/customer');
       return;
     }
     loadData();
-  }, [user, authReady, openAuth, loadData]);
+  }, [user, authReady, router, loadData]);
 
   const apply = async (jobId: string) => {
     try {
@@ -61,7 +67,7 @@ export default function WorkerDashboard() {
       });
       showToast('Application submitted!', 'success');
     } catch {
-      if (!user) openAuth('login', 'worker');
+      if (!user) router.push('/login/professional');
       else showToast('Application failed', 'error');
     }
   };
@@ -107,7 +113,13 @@ export default function WorkerDashboard() {
               </button>
             )}
           </div>
-          <div className="flex gap-3 items-center">
+          <div className="flex gap-3 items-center flex-wrap">
+            <Link href="/find-jobs" className="px-4 py-2 rounded-xl text-sm font-medium bg-teal-600 text-white hover:bg-teal-500">
+              Find Work
+            </Link>
+            <Link href="/find-workers" className="glass px-4 py-2 rounded-xl text-sm text-slate-800 hover:bg-white/90">
+              Find a Worker
+            </Link>
             <button onClick={toggleAvailability} className={`px-4 py-2 rounded-xl text-sm font-medium ${available ? 'bg-teal-600 text-white' : 'glass text-slate-800'}`}>
               {available ? '🟢 Online' : '⚫ Offline'}
             </button>
