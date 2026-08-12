@@ -11,6 +11,7 @@ import { applySessionSearchLocation } from '@/lib/location-service';
 import { LOCATIONS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const LocationMapSection = dynamic(
   () => import('@/components/maps/LocationMapSection').then((m) => m.LocationMapSection),
@@ -34,6 +35,7 @@ export function LocationPicker({ showMap = true, compact = false, className }: L
   const { location, locationReady, showToast } = useUIStore();
   const user = useAuthStore((s) => s.user);
   const { useGps } = useCurrentLocation();
+  const { t } = useTranslation();
   const [manualInput, setManualInput] = useState('');
   const [searching, setSearching] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -64,9 +66,9 @@ export function LocationPicker({ showMap = true, compact = false, className }: L
     setSearching(false);
     if (result) {
       await saveSearch(result.label, result.lat, result.lng);
-      showToast(`Location set to ${result.label}`, 'success');
+      showToast(t('location.locationSet', { label: result.label }), 'success');
     } else {
-      showToast('Location not found. Try a different address.', 'error');
+      showToast(t('location.locationNotFound'), 'error');
     }
   };
 
@@ -81,7 +83,7 @@ export function LocationPicker({ showMap = true, compact = false, className }: L
                 value={manualInput}
                 onChange={(e) => setManualInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && searchLocation()}
-                placeholder="Search only if GPS fails…"
+                placeholder={t('location.searchPlaceholder')}
                 className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
               />
             </div>
@@ -91,14 +93,14 @@ export function LocationPicker({ showMap = true, compact = false, className }: L
               disabled={searching}
               className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 text-sm font-medium"
             >
-              {searching ? '…' : 'Search'}
+              {searching ? '…' : t('common.search')}
             </button>
           </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
           <span className="text-sm text-slate-500 flex items-center gap-1">
-            <MapPin size={14} /> Quick select (if GPS fails):
+            <MapPin size={14} /> {t('location.quickSelect')}
           </span>
           {LOCATIONS.slice(0, 6).map((loc) => (
             <button
@@ -134,7 +136,7 @@ export function LocationPicker({ showMap = true, compact = false, className }: L
         )}
       >
         <Navigation size={16} />
-        Use My Current Location
+        {t('location.useMyLocation')}
       </button>
 
       <div className="flex flex-1 min-w-[200px] gap-2">
@@ -144,7 +146,7 @@ export function LocationPicker({ showMap = true, compact = false, className }: L
             value={manualInput}
             onChange={(e) => setManualInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && searchLocation()}
-            placeholder="Search if GPS fails…"
+            placeholder={t('location.searchPlaceholder')}
             className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
           />
         </div>
@@ -154,13 +156,13 @@ export function LocationPicker({ showMap = true, compact = false, className }: L
           disabled={searching}
           className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 text-sm font-medium"
         >
-          {searching ? '...' : 'Search'}
+          {searching ? '...' : t('common.search')}
         </button>
       </div>
 
       <div className="flex flex-wrap gap-2">
         <span className="text-sm text-slate-500 flex items-center gap-1">
-          <MapPin size={14} /> Quick select:
+          <MapPin size={14} /> {t('location.quickSelect')}
         </span>
         {LOCATIONS.map((loc) => (
           <button

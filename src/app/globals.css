@@ -151,6 +151,77 @@ body {
   );
 }
 
+.hero-overlay-night {
+  background: linear-gradient(
+    105deg,
+    rgba(6, 9, 18, 0.93) 0%,
+    rgba(6, 9, 18, 0.78) 26%,
+    rgba(6, 9, 18, 0.35) 48%,
+    rgba(6, 9, 18, 0.06) 68%,
+    transparent 82%
+  );
+}
+
+.hero-bg-scene {
+  background-repeat: no-repeat;
+  background-size: 100% auto;
+  background-position: 55% 38%;
+}
+
+@media (min-width: 768px) {
+  .hero-bg-scene {
+    background-size: 94% auto;
+    background-position: 66% center;
+  }
+}
+
+@media (min-width: 1024px) {
+  .hero-bg-scene {
+    background-size: 86% auto;
+    background-position: 70% center;
+  }
+}
+
+@media (min-width: 1280px) {
+  .hero-bg-scene {
+    background-size: 78% auto;
+    background-position: 72% center;
+  }
+}
+
+.hero-pin-glow {
+  background: radial-gradient(
+    ellipse 50% 40% at 74% 52%,
+    rgba(245, 158, 11, 0.1) 0%,
+    transparent 60%
+  );
+}
+
+.auth-bg-scene {
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+}
+
+.auth-overlay {
+  background: linear-gradient(
+    180deg,
+    rgba(6, 9, 18, 0.55) 0%,
+    rgba(6, 9, 18, 0.72) 45%,
+    rgba(6, 9, 18, 0.88) 100%
+  );
+}
+
+.auth-scene-overlay {
+  background: radial-gradient(
+      ellipse 70% 55% at 50% 42%,
+      rgba(6, 9, 18, 0.15) 0%,
+      rgba(6, 9, 18, 0.45) 45%,
+      rgba(4, 6, 15, 0.88) 100%
+    ),
+    linear-gradient(180deg, rgba(4, 6, 15, 0.25) 0%, rgba(4, 6, 15, 0.75) 100%);
+}
+
 .hero-golden-glow {
   background: radial-gradient(
     ellipse 80% 60% at 75% 40%,

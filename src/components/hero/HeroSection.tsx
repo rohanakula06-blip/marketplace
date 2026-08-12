@@ -1,68 +1,115 @@
 'use client';
 
 import Link from 'next/link';
-import { Search, CheckCircle } from 'lucide-react';
+import { Search, Sparkles, MapPin } from 'lucide-react';
 import { ActionCards } from './ActionCards';
 import { LocationPicker } from '../location/LocationPicker';
-import { TrustBar, StatsBar } from '../layout/Navbar';
 import { useAuthStore } from '@/store/app-store';
+import { Shield, Star, Lock, Users } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function HeroSection() {
   const user = useAuthStore((s) => s.user);
+  const { t } = useTranslation();
   const findWorkersHref = user
     ? user.workerProfile
       ? '/find-workers'
       : '/dashboard/customer'
     : '/register';
 
+  const trustItems = [
+    { icon: Shield, titleKey: 'hero.verifiedPros', descKey: 'hero.verifiedProsDesc' },
+    { icon: MapPin, titleKey: 'hero.hyperlocal', descKey: 'hero.hyperlocalDesc' },
+    { icon: Star, titleKey: 'hero.topRated', descKey: 'hero.topRatedDesc' },
+    { icon: Lock, titleKey: 'hero.secure', descKey: 'hero.secureDesc' },
+  ] as const;
+
+  const stats = [
+    { icon: Users, value: '12K+', labelKey: 'hero.statCustomers' },
+    { icon: Shield, value: '4.5K+', labelKey: 'hero.statWorkers' },
+    { icon: Star, value: '25K+', labelKey: 'hero.statJobs' },
+    { icon: MapPin, value: '4.8', labelKey: 'hero.statRating' },
+  ] as const;
+
   return (
-    <section id="home" className="relative min-h-screen flex items-center pt-20 pb-12 overflow-hidden">
-      {/* Suburban street background — matches reference mockup */}
+    <section id="home" className="relative min-h-screen overflow-hidden bg-[#060912]">
       <div
-        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
+        className="absolute inset-0 z-0 hero-bg-scene"
         style={{ backgroundImage: "url('/hero-background.png')" }}
       />
+      <div className="absolute inset-0 z-[1] hero-overlay-night" />
+      <div className="absolute inset-0 z-[1] hero-pin-glow pointer-events-none" />
 
-      {/* Light wash + golden-hour glow for readable text on the left */}
-      <div className="absolute inset-0 z-[1] hero-overlay" />
-      <div className="absolute inset-0 z-[1] hero-golden-glow" />
+      <div className="relative z-10 mx-auto max-w-7xl px-4 lg:px-8 pt-28 pb-16">
+        <div className="grid lg:grid-cols-12 gap-10 lg:gap-8 items-start">
+          <div className="lg:col-span-6 xl:col-span-5">
+            <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-200 mb-6 backdrop-blur-sm">
+              <Sparkles size={16} className="text-amber-400" />
+              {t('hero.badge')}
+            </div>
 
-      <div className="relative z-10 mx-auto max-w-7xl px-4 lg:px-8 w-full py-8">
-        <div className="max-w-2xl">
-          <div className="inline-flex items-center gap-2 bg-blue-50/90 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-6 border border-blue-100 shadow-sm">
-            <CheckCircle size={16} />
-            Trusted by thousands in your community
+            <h1 className="text-4xl md:text-5xl xl:text-[3.4rem] font-extrabold leading-[1.1] text-white mb-6">
+              {t('hero.title1')}{' '}
+              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-amber-400 to-orange-400">
+                {t('hero.title2')}
+              </span>
+              <span className="block mt-1 text-blue-300">{t('hero.title3')}</span>
+            </h1>
+
+            <p className="text-lg text-slate-300 leading-relaxed max-w-xl mb-8">{t('hero.subtitle')}</p>
+
+            <ActionCards variant="hero" />
+
+            <div className="grid grid-cols-2 gap-3 mt-10 max-w-xl">
+              {trustItems.map((item) => (
+                <div
+                  key={item.titleKey}
+                  className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-3.5"
+                >
+                  <div className="p-2 rounded-lg bg-amber-500/15">
+                    <item.icon size={16} className="text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm text-white">{t(item.titleKey)}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{t(item.descKey)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-
-          <h1 className="text-4xl md:text-5xl lg:text-[3.25rem] font-extrabold leading-[1.15] text-slate-900 mb-6">
-            Local Skills. Local Needs.{' '}
-            <span className="text-blue-600 block sm:inline">One Powerful Connection.</span>
-          </h1>
-
-          <p className="text-lg text-slate-600 leading-relaxed max-w-xl mb-8">
-            Whether you need a helping hand or are looking for meaningful work, LocalPro connects you with trusted people nearby.
-          </p>
-
-          <ActionCards />
-
-          <TrustBar />
+          <div className="hidden lg:block lg:col-span-6 xl:col-span-7" aria-hidden />
         </div>
 
-        <StatsBar />
-
-        {/* Location picker */}
-        <div className="max-w-3xl mt-10 bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-100 p-6">
-          <h3 className="font-semibold text-slate-900 mb-1 flex items-center gap-2">
-            📍 Set Your Location
-          </h3>
-          <p className="text-sm text-slate-500 mb-4">Use GPS or search to find verified professionals near you</p>
-          <LocationPicker showMap compact />
-          <div className="mt-4">
-            <Link href={findWorkersHref} className="btn-primary inline-flex items-center gap-2">
-              <Search size={16} /> Find Nearby Professionals
-            </Link>
+        <div className="mt-12 rounded-2xl border border-white/10 bg-slate-900/60 backdrop-blur-xl p-6 shadow-2xl shadow-black/40">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+            {stats.map((s) => (
+              <div key={s.labelKey}>
+                <s.icon className="mx-auto text-amber-400 mb-2" size={22} />
+                <p className="text-2xl font-bold text-white">{s.value}</p>
+                <p className="text-xs text-slate-400 mt-1">{t(s.labelKey)}</p>
+              </div>
+            ))}
           </div>
         </div>
+
+        {user && (
+          <div className="mt-8 max-w-3xl rounded-2xl border border-white/10 bg-slate-900/75 backdrop-blur-xl shadow-2xl shadow-black/50 p-6">
+            <h3 className="font-semibold text-white mb-1 flex items-center gap-2">
+              <MapPin size={18} className="text-amber-400" />
+              {t('hero.setLocation')}
+            </h3>
+            <p className="text-sm text-slate-400 mb-4">{t('hero.setLocationHint')}</p>
+            <LocationPicker showMap compact />
+            <div className="mt-4">
+              <Link
+                href={findWorkersHref}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-3 text-sm font-semibold text-slate-900 shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:-translate-y-0.5 transition-all"
+              >
+                <Search size={16} /> {t('hero.findNearby')}
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );

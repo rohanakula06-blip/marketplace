@@ -6,6 +6,7 @@ import { useCurrentLocation } from '@/hooks/useCurrentLocation';
 import { formatAccuracy } from '@/lib/location-utils';
 import type { MapMarker } from './MapView';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const MapView = dynamic(() => import('./MapView'), {
   ssr: false,
@@ -36,6 +37,7 @@ export function LocationMapSection({
   compact = false,
 }: LocationMapSectionProps) {
   const { coords, location, accuracy, useGps, locationReady, isDetecting, error } = useCurrentLocation();
+  const { t } = useTranslation();
 
   const accuracyLabel = formatAccuracy(accuracy ?? undefined);
   const hasValidCoords =
@@ -56,7 +58,7 @@ export function LocationMapSection({
           <div className="min-w-0">
             {hasValidCoords ? (
               <>
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Your location</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{t('location.yourLocation')}</p>
                 <p className="font-semibold text-slate-900 truncate">{location}</p>
                 <p className="text-xs text-slate-400 mt-0.5">
                   {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
@@ -65,18 +67,18 @@ export function LocationMapSection({
               </>
             ) : isDetecting ? (
               <>
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Detecting</p>
-                <p className="text-sm text-slate-600">Getting your GPS position…</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{t('location.detecting')}</p>
+                <p className="text-sm text-slate-600">{t('location.detectingHint')}</p>
               </>
             ) : error ? (
               <>
-                <p className="text-xs font-medium uppercase tracking-wide text-red-500">GPS unavailable</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-red-500">{t('location.gpsUnavailable')}</p>
                 <p className="text-sm text-slate-600">{error}</p>
               </>
             ) : (
               <>
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Location</p>
-                <p className="text-sm text-slate-500">Tap the button to use GPS, or search your city above</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{t('location.locationLabel')}</p>
+                <p className="text-sm text-slate-500">{t('location.locationHint')}</p>
               </>
             )}
           </div>
@@ -89,14 +91,14 @@ export function LocationMapSection({
           className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 shrink-0 disabled:opacity-60"
         >
           {isDetecting ? <Loader2 size={16} className="animate-spin" /> : <Navigation size={16} />}
-          {compact ? 'Refresh GPS' : 'Use my location'}
+          {compact ? t('location.refreshGps') : t('location.useMyLocation')}
         </button>
       </div>
 
       {error && !hasValidCoords && !isDetecting && (
         <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <AlertCircle size={16} className="shrink-0 mt-0.5" />
-          <span>Search your city or area above, or allow location permission and try again.</span>
+          <span>{t('location.searchCityWarning')}</span>
         </div>
       )}
 
@@ -121,20 +123,18 @@ export function LocationMapSection({
             {isDetecting ? (
               <>
                 <Loader2 size={28} className="animate-spin text-blue-500" />
-                <p className="text-sm text-slate-600">Pinpointing your location on the map…</p>
+                <p className="text-sm text-slate-600">{t('location.pinpointing')}</p>
               </>
             ) : (
               <>
                 <MapPin size={28} className="text-slate-400" />
-                <p className="text-sm text-slate-600 max-w-xs">
-                  Map appears once GPS or a city search sets your location precisely.
-                </p>
+                <p className="text-sm text-slate-600 max-w-xs">{t('location.mapPending')}</p>
                 <button
                   type="button"
                   onClick={() => useGps()}
                   className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
                 >
-                  Use my location
+                  {t('location.useMyLocation')}
                 </button>
               </>
             )}

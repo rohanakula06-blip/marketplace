@@ -16,7 +16,7 @@ import { Wifi, WifiOff } from 'lucide-react';
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const setUser = useAuthStore((s) => s.setUser);
   const setAuthReady = useAuthStore((s) => s.setAuthReady);
-  const { largeText, reducedMotion, showToast } = useUIStore();
+  const { largeText, reducedMotion, showToast, language } = useUIStore();
   const [backendStatus, setBackendStatus] = useState<'checking' | 'connected' | 'error'>('checking');
   const [uiHydrated, setUiHydrated] = useState(false);
 
@@ -71,6 +71,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.classList.toggle('large-text', largeText);
     document.documentElement.classList.toggle('reduced-motion', reducedMotion);
   }, [largeText, reducedMotion]);
+
+  useEffect(() => {
+    document.documentElement.lang = language === 'te' ? 'te' : language === 'hi' ? 'hi' : 'en';
+  }, [language]);
 
   return (
     <>

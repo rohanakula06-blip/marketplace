@@ -16,6 +16,7 @@ import {
 import { useUIStore } from '@/store/app-store';
 import { cn } from '@/lib/utils';
 import { api, ApiError } from '@/lib/api';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type LoginMethod = 'password' | 'email-otp' | 'mobile-otp';
 
@@ -54,6 +55,7 @@ const ACCENT = {
 export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProps) {
   const accent = ACCENT[variant];
   const { showToast } = useUIStore();
+  const { t } = useTranslation();
 
   const [method, setMethod] = useState<LoginMethod>('password');
   const [email, setEmail] = useState('');
@@ -176,18 +178,18 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
   };
 
   const inputClass = cn(
-    'w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2',
+    'w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2',
     accent.ring
   );
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-4">
+    <div className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 space-y-4">
       <div className="flex gap-1 p-1 bg-slate-100 rounded-xl">
         {(
           [
-            { id: 'password' as const, label: 'Password', icon: KeyRound },
-            { id: 'email-otp' as const, label: 'Email OTP', icon: Mail },
-            { id: 'mobile-otp' as const, label: 'Mobile OTP', icon: Smartphone },
+            { id: 'password' as const, label: t('auth.passwordTab'), icon: KeyRound },
+            { id: 'email-otp' as const, label: t('auth.emailOtpTab'), icon: Mail },
+            { id: 'mobile-otp' as const, label: t('auth.mobileOtpTab'), icon: Smartphone },
           ] as const
         ).map(({ id, label, icon: Icon }) => (
           <button
@@ -195,8 +197,8 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
             type="button"
             onClick={() => switchMethod(id)}
             className={cn(
-              'flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-medium transition-colors',
-              method === id ? accent.tab : 'text-slate-500 hover:text-slate-700'
+              'flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-semibold transition-colors',
+              method === id ? accent.tab : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/80'
             )}
           >
             <Icon size={14} className="hidden sm:block" />
@@ -208,7 +210,7 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
       {method === 'password' && (
         <form onSubmit={handlePasswordLogin} className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-slate-700">Email</label>
+            <label className="text-sm font-semibold text-slate-800">{t('auth.email')}</label>
             <input
               type="email"
               required
@@ -219,7 +221,7 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
             />
           </div>
           <div>
-            <label className="text-sm font-medium text-slate-700">Password</label>
+            <label className="text-sm font-semibold text-slate-800">{t('auth.password')}</label>
             <div className="relative mt-1">
               <input
                 type={showPass ? 'text' : 'password'}
@@ -239,17 +241,17 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
             </div>
           </div>
           <div className="flex items-center justify-between text-sm">
-            <label className="flex items-center gap-2 text-slate-600 cursor-pointer">
+            <label className="flex items-center gap-2 text-slate-800 cursor-pointer">
               <input
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
                 className={cn('rounded border-slate-300', accent.checkbox)}
               />
-              Remember me
+              {t('auth.rememberMe')}
             </label>
             <Link href="/forgot-password" className={cn(accent.link, 'hover:underline')}>
-              Forgot password?
+              {t('auth.forgotPassword')}
             </Link>
           </div>
           <button
@@ -261,7 +263,7 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
             )}
           >
             {loading && <Loader2 size={16} className="animate-spin" />}
-            Sign In
+            {t('auth.signInBtn')}
           </button>
         </form>
       )}
@@ -293,7 +295,7 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
             <>
               <input
                 type="email"
-                placeholder="your.email@gmail.com"
+                placeholder={t('auth.enterEmail')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className={inputClass}
@@ -308,7 +310,7 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
                 )}
               >
                 {loading ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
-                Send Code to Email
+                {t('auth.sendCodeEmail')}
               </button>
             </>
           ) : (
@@ -327,7 +329,7 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
                 type="text"
                 inputMode="numeric"
                 maxLength={6}
-                placeholder="Enter 6-digit code"
+                placeholder={t('auth.enter6Digit')}
                 value={otp}
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 className={cn(inputClass, 'text-center text-2xl font-mono tracking-[0.5em]')}
@@ -343,15 +345,15 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
                 )}
               >
                 {loading && <Loader2 size={16} className="animate-spin" />}
-                Verify & Sign In
+                {t('auth.verifySignIn')}
               </button>
               <button
                 type="button"
                 onClick={sendEmailOtp}
                 disabled={countdown > 0 || loading}
-                className="w-full text-sm text-slate-500 disabled:opacity-50"
+                className="w-full text-sm text-slate-700 disabled:opacity-50"
               >
-                {countdown > 0 ? `Resend in ${countdown}s` : 'Resend code'}
+                {countdown > 0 ? t('auth.resendIn', { seconds: countdown }) : t('auth.resendCode')}
               </button>
             </>
           )}
@@ -387,7 +389,7 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm">+91</span>
                 <input
                   type="tel"
-                  placeholder="Mobile number"
+                  placeholder={t('auth.enterMobile')}
                   maxLength={10}
                   value={phone}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
@@ -404,7 +406,7 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
                 )}
               >
                 {loading ? <Loader2 size={16} className="animate-spin" /> : <Smartphone size={16} />}
-                Send OTP to Mobile
+                {t('auth.sendOtpMobile')}
               </button>
             </>
           ) : (
@@ -420,7 +422,7 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
                 type="text"
                 inputMode="numeric"
                 maxLength={6}
-                placeholder="Enter 6-digit OTP"
+                placeholder={t('auth.enter6Otp')}
                 value={otp}
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 className={cn(inputClass, 'text-center text-2xl font-mono tracking-[0.5em]')}
@@ -436,15 +438,15 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
                 )}
               >
                 {loading && <Loader2 size={16} className="animate-spin" />}
-                Verify & Sign In
+                {t('auth.verifySignIn')}
               </button>
               <button
                 type="button"
                 onClick={sendPhoneOtp}
                 disabled={countdown > 0 || loading}
-                className="w-full text-sm text-slate-500 disabled:opacity-50"
+                className="w-full text-sm text-slate-700 disabled:opacity-50"
               >
-                {countdown > 0 ? `Resend in ${countdown}s` : 'Resend OTP'}
+                {countdown > 0 ? t('auth.resendIn', { seconds: countdown }) : t('auth.resendOtp')}
               </button>
             </>
           )}

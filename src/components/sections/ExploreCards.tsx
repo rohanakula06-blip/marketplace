@@ -1,7 +1,8 @@
 'use client';
 
 import { Sparkles, Shield, MessageSquare, Calendar, Info, Mail } from 'lucide-react';
-import { useUIStore } from '@/store/app-store';
+import { useUIStore, useAuthStore } from '@/store/app-store';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const EXPLORE_ITEMS = [
   { id: 'ai' as const, icon: Sparkles, label: 'Ask AI', desc: 'Describe your problem', color: 'bg-amber-50 text-amber-700 border-amber-200' },
@@ -15,12 +16,17 @@ const EXPLORE_ITEMS = [
 
 export function ExploreCards() {
   const setInfoModal = useUIStore((s) => s.setInfoModal);
+  const user = useAuthStore((s) => s.user);
+  const authReady = useAuthStore((s) => s.authReady);
+  const { t } = useTranslation();
+
+  if (!authReady || !user) return null;
 
   return (
     <section className="section-padding bg-white border-t border-slate-100">
       <div className="mx-auto max-w-5xl px-4">
-        <h2 className="text-2xl font-bold text-slate-900 text-center mb-2">Explore LocalPro</h2>
-        <p className="text-slate-600 text-center mb-8">Tap any topic — opens in a popup, no scrolling needed</p>
+        <h2 className="text-2xl font-bold text-slate-900 text-center mb-2">{t('explore.title')}</h2>
+        <p className="text-slate-600 text-center mb-8">{t('explore.subtitle')}</p>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {EXPLORE_ITEMS.map((item) => (
             <button
