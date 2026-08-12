@@ -193,7 +193,7 @@ export default function MapView({
           aria-label="Center map on my location"
         >
           {recentering ? <Loader2 size={16} className="animate-spin" /> : <Crosshair size={16} />}
-          {recentering ? 'Locating…' : 'My location'}
+          My location
         </button>
       )}
     </div>

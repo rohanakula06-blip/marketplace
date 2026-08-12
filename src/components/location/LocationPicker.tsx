@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
-import { MapPin, Navigation, Loader2, Search } from 'lucide-react';
+import { MapPin, Navigation, Search } from 'lucide-react';
 import { useUIStore } from '@/store/app-store';
 import { useAuthStore } from '@/store/app-store';
 import { geocodeAddressWithLabel, CITY_COORDS } from '@/lib/geolocation';
 import { useCurrentLocation } from '@/hooks/useCurrentLocation';
+import { applySessionSearchLocation } from '@/lib/location-service';
 import { LOCATIONS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
@@ -30,24 +31,21 @@ interface LocationPickerProps {
 }
 
 export function LocationPicker({ showMap = true, compact = false, className }: LocationPickerProps) {
-  const { location, setLocation, showToast, setCoords, setLocationLocked } = useUIStore();
+  const { location, locationReady, showToast } = useUIStore();
   const user = useAuthStore((s) => s.user);
-  const setUser = useAuthStore((s) => s.setUser);
-  const { refresh, isDetecting } = useCurrentLocation({ autoDetect: !showMap });
+  const { useGps } = useCurrentLocation();
   const [manualInput, setManualInput] = useState('');
   const [searching, setSearching] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const saveToBackend = async (label: string, lat: number, lng: number, locked = false) => {
-    setCoords(lat, lng, label, locked ? null : undefined, locked ? 'manual' : 'gps');
-    setLocationLocked(locked);
+  const saveSearch = async (label: string, lat: number, lng: number) => {
+    applySessionSearchLocation(label, lat, lng);
     if (user) {
       setSaving(true);
       try {
         await api.location.update({ location: label, latitude: lat, longitude: lng });
-        setUser({ ...user, location: label });
       } catch {
-        showToast('Location saved on this device', 'info');
+        showToast('Location updated for this session', 'info');
       } finally {
         setSaving(false);
       }
@@ -56,11 +54,7 @@ export function LocationPicker({ showMap = true, compact = false, className }: L
 
   const selectCity = async (city: string) => {
     const c = CITY_COORDS[city];
-    if (c) await saveToBackend(city, c.lat, c.lng, true);
-    else {
-      setLocation(city);
-      setLocationLocked(true);
-    }
+    if (c) await saveSearch(city, c.lat, c.lng);
   };
 
   const searchLocation = async () => {
@@ -69,7 +63,7 @@ export function LocationPicker({ showMap = true, compact = false, className }: L
     const result = await geocodeAddressWithLabel(manualInput);
     setSearching(false);
     if (result) {
-      await saveToBackend(result.label, result.lat, result.lng, true);
+      await saveSearch(result.label, result.lat, result.lng);
       showToast(`Location set to ${result.label}`, 'success');
     } else {
       showToast('Location not found. Try a different address.', 'error');
@@ -87,7 +81,7 @@ export function LocationPicker({ showMap = true, compact = false, className }: L
                 value={manualInput}
                 onChange={(e) => setManualInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && searchLocation()}
-                placeholder="Or search a different area…"
+                placeholder="Search only if GPS fails…"
                 className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
               />
             </div>
@@ -104,7 +98,7 @@ export function LocationPicker({ showMap = true, compact = false, className }: L
 
         <div className="flex flex-wrap gap-2">
           <span className="text-sm text-slate-500 flex items-center gap-1">
-            <MapPin size={14} /> Quick select:
+            <MapPin size={14} /> Quick select (if GPS fails):
           </span>
           {LOCATIONS.slice(0, 6).map((loc) => (
             <button
@@ -113,7 +107,7 @@ export function LocationPicker({ showMap = true, compact = false, className }: L
               onClick={() => selectCity(loc)}
               className={cn(
                 'text-xs px-3 py-1.5 rounded-full border transition-all',
-                location === loc
+                locationReady && location === loc
                   ? 'bg-blue-600 text-white border-blue-600'
                   : 'bg-white text-slate-600 border-slate-200 hover:border-blue-400'
               )}
@@ -132,14 +126,14 @@ export function LocationPicker({ showMap = true, compact = false, className }: L
     <div className={cn('space-y-4', className)}>
       <button
         type="button"
-        onClick={() => refresh()}
-        disabled={isDetecting || saving}
+        onClick={() => useGps()}
+        disabled={saving}
         className={cn(
           'flex items-center gap-2 rounded-xl font-medium transition-all',
           compact ? 'px-4 py-2 text-sm bg-blue-600 text-white hover:bg-blue-700' : 'btn-primary'
         )}
       >
-        {isDetecting || saving ? <Loader2 size={16} className="animate-spin" /> : <Navigation size={16} />}
+        <Navigation size={16} />
         Use My Current Location
       </button>
 
@@ -150,7 +144,7 @@ export function LocationPicker({ showMap = true, compact = false, className }: L
             value={manualInput}
             onChange={(e) => setManualInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && searchLocation()}
-            placeholder="Search any city or area in India..."
+            placeholder="Search if GPS fails…"
             className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
           />
         </div>
@@ -175,7 +169,7 @@ export function LocationPicker({ showMap = true, compact = false, className }: L
             onClick={() => selectCity(loc)}
             className={cn(
               'text-xs px-3 py-1.5 rounded-full border transition-all',
-              location === loc
+              locationReady && location === loc
                 ? 'bg-blue-600 text-white border-blue-600'
                 : 'bg-white text-slate-600 border-slate-200 hover:border-blue-400'
             )}

@@ -12,7 +12,7 @@ export default function WorkerDashboard() {
   const user = useAuthStore((s) => s.user);
   const authReady = useAuthStore((s) => s.authReady);
   const { openAuth, showToast } = useUIStore();
-  const { coords, location, syncing, initialized, syncCurrentLocation } = useDashboardLocation();
+  const { coords, location, locationReady, syncing, initialized, syncCurrentLocation } = useDashboardLocation();
   const [jobs, setJobs] = useState<Record<string, unknown>[]>([]);
   const [bookings, setBookings] = useState<Record<string, unknown>[]>([]);
   const [available, setAvailable] = useState(true);
@@ -95,16 +95,17 @@ export default function WorkerDashboard() {
           <div>
             <h1 className="text-2xl font-bold text-white">Worker Dashboard</h1>
             <p className="text-slate-300">Welcome, {user.name}</p>
-            <button
-              type="button"
-              onClick={() => syncCurrentLocation(false).then(() => loadData())}
-              disabled={syncing}
-              className="mt-2 inline-flex items-center gap-1.5 text-xs text-teal-300 hover:text-teal-200"
-            >
-              {syncing ? <Loader2 size={12} className="animate-spin" /> : <MapPin size={12} />}
-              {location}
-              {!syncing && <Navigation size={11} className="opacity-70" aria-label="Refresh GPS" />}
-            </button>
+            {locationReady && (
+              <button
+                type="button"
+                onClick={() => syncCurrentLocation(true).then(() => loadData())}
+                className="mt-2 inline-flex items-center gap-1.5 text-xs text-teal-300 hover:text-teal-200"
+              >
+                <MapPin size={12} />
+                {location}
+                <Navigation size={11} className="opacity-70" aria-label="Refresh location" />
+              </button>
+            )}
           </div>
           <div className="flex gap-3 items-center">
             <button onClick={toggleAvailability} className={`px-4 py-2 rounded-xl text-sm font-medium ${available ? 'bg-teal-600 text-white' : 'glass text-slate-800'}`}>
@@ -135,10 +136,10 @@ export default function WorkerDashboard() {
         <h2 className="font-semibold mb-4 text-white">Recommended Jobs Near You</h2>
         {loading ? (
           <div className="flex items-center gap-2 text-slate-400 py-8">
-            <Loader2 size={18} className="animate-spin" /> Loading jobs for your location...
+            <Loader2 size={18} className="animate-spin" /> Loading jobs…
           </div>
         ) : jobs.length === 0 ? (
-          <div className="glass rounded-xl p-8 text-center text-slate-600">No open jobs near {location} right now.</div>
+          <div className="glass rounded-xl p-8 text-center text-slate-600">No open jobs nearby right now.</div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {jobs.map((job) => (

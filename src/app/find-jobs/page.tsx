@@ -28,15 +28,16 @@ interface Job {
 }
 
 export default function FindJobsPage() {
-  const { coords, openAuth, showToast } = useUIStore();
+  const { coords, locationReady, openAuth, showToast } = useUIStore();
   const user = useAuthStore((s) => s.user);
   const [jobs, setJobs] = useState<Job[]>([]);
 
   useEffect(() => {
+    if (!locationReady) return;
     fetch(`/api/jobs?status=open&lat=${coords.lat}&lng=${coords.lng}`)
       .then((r) => r.json())
       .then((d) => setJobs(d.jobs || []));
-  }, [coords]);
+  }, [coords, locationReady]);
 
   const apply = async (jobId: string) => {
     if (!user) {

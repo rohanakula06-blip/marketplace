@@ -6,6 +6,7 @@ import { useAuthStore, useUIStore } from '@/store/app-store';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { api, ApiError } from '@/lib/api';
+import { requestLiveLocation, resetLocationState } from '@/lib/location-service';
 
 interface ProviderStatus {
   configured: boolean;
@@ -51,10 +52,12 @@ export function AuthModals() {
 
   const isLogin = authModal === 'login';
 
-  const onAuthSuccess = (user: Record<string, unknown>) => {
-    setUser(user as unknown as Parameters<typeof setUser>[0]);
+  const onAuthSuccess = async (user: Record<string, unknown>) => {
+    setUser({ ...user, location: null } as unknown as Parameters<typeof setUser>[0]);
     if (authIntent) setJourney(authIntent);
     setAuthModal(null);
+    resetLocationState();
+    requestLiveLocation({ quiet: true, force: true });
     showToast(`Welcome, ${user.name}!`, 'success');
     if (authIntent === 'worker') router.push('/register/worker');
     else if (authIntent === 'customer') router.push('/find-workers');

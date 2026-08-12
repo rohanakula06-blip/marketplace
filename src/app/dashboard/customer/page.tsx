@@ -12,7 +12,7 @@ export default function CustomerDashboard() {
   const user = useAuthStore((s) => s.user);
   const authReady = useAuthStore((s) => s.authReady);
   const { openAuth, setWorkerProfileModal, setBookingModal, showToast } = useUIStore();
-  const { coords, location, syncing, initialized, syncCurrentLocation } = useDashboardLocation();
+  const { coords, location, locationReady, syncing, initialized, syncCurrentLocation } = useDashboardLocation();
   const [workers, setWorkers] = useState<Record<string, unknown>[]>([]);
   const [bookings, setBookings] = useState<Record<string, unknown>[]>([]);
   const [myJobs, setMyJobs] = useState<Record<string, unknown>[]>([]);
@@ -121,16 +121,17 @@ export default function CustomerDashboard() {
           <div>
             <h1 className="text-2xl font-bold text-white">Customer Dashboard</h1>
             <p className="text-slate-300">Welcome, {user.name}</p>
-            <button
-              type="button"
-              onClick={() => syncCurrentLocation(false).then(() => loadData())}
-              disabled={syncing}
-              className="mt-2 inline-flex items-center gap-1.5 text-xs text-blue-300 hover:text-blue-200"
-            >
-              {syncing ? <Loader2 size={12} className="animate-spin" /> : <MapPin size={12} />}
-              {location}
-              {!syncing && <Navigation size={11} className="opacity-70" aria-label="Refresh GPS" />}
-            </button>
+            {locationReady && (
+              <button
+                type="button"
+                onClick={() => syncCurrentLocation(true).then(() => loadData())}
+                className="mt-2 inline-flex items-center gap-1.5 text-xs text-blue-300 hover:text-blue-200"
+              >
+                <MapPin size={12} />
+                {location}
+                <Navigation size={11} className="opacity-70" aria-label="Refresh location" />
+              </button>
+            )}
           </div>
           <div className="flex gap-3">
             <Link href="/" className="glass px-4 py-2 rounded-xl text-sm text-slate-800 hover:bg-slate-100">

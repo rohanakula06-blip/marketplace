@@ -30,7 +30,7 @@ interface Worker {
 }
 
 export default function FindWorkersPage() {
-  const { coords, location, setBookingModal, setWorkerProfileModal, setMessageModal } = useUIStore();
+  const { coords, location, locationReady, setBookingModal, setWorkerProfileModal, setMessageModal } = useUIStore();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [category, setCategory] = useState('');
   const [loading, setLoading] = useState(true);
@@ -39,13 +39,14 @@ export default function FindWorkersPage() {
   const noLocalWorkers = !loading && workers.length > 0 && nearestDistance != null && nearestDistance > 50;
 
   useEffect(() => {
+    if (!locationReady) return;
     setLoading(true);
     api.workers
       .list({ lat: coords.lat, lng: coords.lng, category: category || undefined, sort: 'nearest' })
       .then((d) => setWorkers(d.workers as unknown as Worker[]))
       .catch(() => setWorkers([]))
       .finally(() => setLoading(false));
-  }, [coords, category]);
+  }, [coords, category, locationReady]);
 
   const mapMarkers: MapMarker[] = workers.slice(0, 15).map((w) => ({
     id: w.id,

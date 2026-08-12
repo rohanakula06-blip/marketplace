@@ -8,6 +8,7 @@ import { useUIStore, useAuthStore } from '@/store/app-store';
 import { NotificationBell } from '@/components/ui/NotificationBell';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
+import { resetLocationState } from '@/lib/location-service';
 
 const NAV_LINKS = [
   { href: '/', label: 'Home' },
@@ -20,7 +21,7 @@ const NAV_LINKS = [
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { location, openAuth, setInfoModal } = useUIStore();
+  const { location, locationReady, openAuth, setInfoModal } = useUIStore();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const router = useRouter();
@@ -34,6 +35,7 @@ export function Navbar() {
   const handleLogout = async () => {
     await api.auth.logout();
     logout();
+    resetLocationState();
     router.push('/');
   };
 
@@ -63,10 +65,12 @@ export function Navbar() {
         </div>
 
         <div className="hidden md:flex items-center gap-3">
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
-            <MapPin size={12} className="text-blue-600" />
-            <span className="max-w-[100px] truncate">{location.split(',')[0]}</span>
-          </div>
+          {locationReady && (
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
+              <MapPin size={12} className="text-blue-600" />
+              <span className="max-w-[120px] truncate">{location.split(',')[0]}</span>
+            </div>
+          )}
 
           {user && <NotificationBell />}
 

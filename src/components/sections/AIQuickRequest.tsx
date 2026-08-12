@@ -23,9 +23,10 @@ export function AIQuickRequest() {
   const [description, setDescription] = useState('My switchboard is making sparks.');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AIResult | null>(null);
-  const { location, openAuth, setWorkerProfileModal } = useUIStore();
+  const { location, locationReady, openAuth, setWorkerProfileModal } = useUIStore();
 
   const analyze = async () => {
+    if (!locationReady) return;
     setLoading(true);
     try {
       const res = await fetch('/api/ai/analyze', {
@@ -62,13 +63,15 @@ export function AIQuickRequest() {
           <button className="flex items-center gap-2 glass px-4 py-2 rounded-xl text-sm text-slate-700 hover:bg-slate-100">
             <Camera size={16} /> Upload Photo
           </button>
-          <input
-            type="text"
-            value={location}
-            readOnly
-            className="flex-1 min-w-[200px] rounded-xl bg-slate-50 border border-slate-200 px-4 py-2 text-sm text-slate-700"
-          />
-          <button onClick={analyze} disabled={loading} className="btn-primary flex items-center gap-2">
+          {locationReady && (
+            <input
+              type="text"
+              value={location}
+              readOnly
+              className="flex-1 min-w-[200px] rounded-xl bg-slate-50 border border-slate-200 px-4 py-2 text-sm text-slate-700"
+            />
+          )}
+          <button onClick={analyze} disabled={loading || !locationReady} className="btn-primary flex items-center gap-2">
             {loading ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
             Analyse My Problem
           </button>

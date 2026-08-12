@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { MapPin, Navigation, Loader2, Search } from 'lucide-react';
+import { MapPin, Navigation, Search } from 'lucide-react';
 import { useUIStore, useAuthStore } from '@/store/app-store';
 import { useCurrentLocation } from '@/hooks/useCurrentLocation';
 import { geocodeAddressWithLabel } from '@/lib/geolocation';
+import { applySessionSearchLocation } from '@/lib/location-service';
 import { formatAccuracy } from '@/lib/location-utils';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
@@ -14,29 +15,20 @@ interface LocationControlsProps {
   className?: string;
 }
 
-/** Search + manual city pick without the map (for sidebars). Map pages auto-detect via LocationMapSection. */
 export function LocationControls({ compact = false, className }: LocationControlsProps) {
-  const { location, coords, locationAccuracy, showToast, setCoords, setLocationLocked } = useUIStore();
+  const { location, coords, locationAccuracy, locationReady, showToast } = useUIStore();
   const user = useAuthStore((s) => s.user);
-  const setUser = useAuthStore((s) => s.setUser);
-  const { refresh, isDetecting } = useCurrentLocation({ autoDetect: false });
-
-  const useGps = () => {
-    setLocationLocked(false);
-    refresh();
-  };
+  const { useGps } = useCurrentLocation();
   const [manualInput, setManualInput] = useState('');
   const [searching, setSearching] = useState(false);
 
   const saveSearch = async (label: string, lat: number, lng: number) => {
-    setCoords(lat, lng, label, null, 'manual');
-    setLocationLocked(true);
+    applySessionSearchLocation(label, lat, lng);
     if (user) {
       try {
         await api.location.update({ location: label, latitude: lat, longitude: lng });
-        setUser({ ...user, location: label });
       } catch {
-        showToast('Location saved on this device', 'info');
+        showToast('Location updated for this session', 'info');
       }
     }
   };
@@ -50,7 +42,7 @@ export function LocationControls({ compact = false, className }: LocationControl
       await saveSearch(result.label, result.lat, result.lng);
       showToast(`Location set to ${result.label}`, 'success');
     } else {
-      showToast('Location not found. Try a different address.', 'error');
+      showToast('Location not found. Try e.g. Amalapuram or Visakhapatnam', 'error');
     }
   };
 
@@ -58,15 +50,13 @@ export function LocationControls({ compact = false, className }: LocationControl
     <div className={cn('space-y-3', className)}>
       <button
         type="button"
-        onClick={useGps}
-        disabled={isDetecting}
+        onClick={() => useGps()}
         className={cn(
           'flex w-full items-center justify-center gap-2 rounded-xl font-medium transition-all',
-          compact ? 'px-4 py-2 text-sm bg-blue-600 text-white hover:bg-blue-700' : 'btn-primary',
-          isDetecting && 'opacity-70'
+          compact ? 'px-4 py-2 text-sm bg-blue-600 text-white hover:bg-blue-700' : 'btn-primary'
         )}
       >
-        {isDetecting ? <Loader2 size={16} className="animate-spin" /> : <Navigation size={16} />}
+        <Navigation size={16} />
         Use my current location
       </button>
 
@@ -91,19 +81,21 @@ export function LocationControls({ compact = false, className }: LocationControl
         </button>
       </div>
 
-      <div className="flex items-start gap-2 text-sm">
-        <MapPin size={16} className="text-blue-600 shrink-0 mt-0.5" />
-        <div>
-          <span className="text-slate-600">Active: </span>
-          <span className="font-semibold text-slate-900">{location}</span>
-          <p className="text-xs text-slate-400 mt-0.5">
-            {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
-            {formatAccuracy(locationAccuracy ?? undefined)
-              ? ` · ${formatAccuracy(locationAccuracy ?? undefined)}`
-              : ''}
-          </p>
+      {locationReady && (
+        <div className="flex items-start gap-2 text-sm">
+          <MapPin size={16} className="text-blue-600 shrink-0 mt-0.5" />
+          <div>
+            <span className="text-slate-600">Active: </span>
+            <span className="font-semibold text-slate-900">{location}</span>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
+              {formatAccuracy(locationAccuracy ?? undefined)
+                ? ` · ${formatAccuracy(locationAccuracy ?? undefined)}`
+                : ''}
+            </p>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

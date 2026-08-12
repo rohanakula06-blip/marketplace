@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore, useUIStore } from '@/store/app-store';
 import { api } from '@/lib/api';
-import { useCurrentLocation } from '@/hooks/useCurrentLocation';
+import { requestLiveLocation, resetLocationState } from '@/lib/location-service';
 import { Toast } from '@/components/ui/Toast';
 import { AuthModals } from '@/components/modals/AuthModals';
 import { BookingModal } from '@/components/modals/BookingModal';
@@ -20,9 +20,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [backendStatus, setBackendStatus] = useState<'checking' | 'connected' | 'error'>('checking');
   const [uiHydrated, setUiHydrated] = useState(false);
 
-  // GPS on app load — never let saved account/demo coords override live location
-  useCurrentLocation({ autoDetect: true, waitForAuth: true });
-
   useEffect(() => {
     if (useUIStore.persist.hasHydrated()) {
       setUiHydrated(true);
@@ -34,7 +31,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!uiHydrated) return;
 
-    async function init() {
+    async function bootstrap() {
+      resetLocationState();
+
       try {
         const health = await api.health();
         setBackendStatus(health.status === 'ok' ? 'connected' : 'error');
@@ -51,19 +50,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       try {
         const { user: sessionUser } = await api.auth.me();
-        if (sessionUser) {
-          setUser(sessionUser as unknown as Parameters<typeof setUser>[0]);
-          // Do NOT overwrite map coords from account — GPS hook owns live location.
-        } else {
-          setUser(null);
-        }
+        setUser(
+          sessionUser
+            ? ({ ...(sessionUser as object), location: null } as Parameters<typeof setUser>[0])
+            : null
+        );
       } catch {
         setUser(null);
       } finally {
         setAuthReady(true);
       }
+
+      requestLiveLocation({ quiet: true, force: true });
     }
-    init();
+
+    bootstrap();
   }, [uiHydrated, setUser, setAuthReady, showToast]);
 
   useEffect(() => {

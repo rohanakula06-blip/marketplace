@@ -43,7 +43,10 @@ export const useAuthStore = create<AuthState>()(
       setAuthReady: (authReady) => set({ authReady }),
       logout: () => set({ user: null, journey: null }),
     }),
-    { name: 'localpro-auth', partialize: (s) => ({ journey: s.journey, user: s.user }) }
+    { name: 'localpro-auth', partialize: (s) => ({
+      journey: s.journey,
+      user: s.user ? { ...s.user, location: null } : null,
+    }) }
   )
 );
 
@@ -61,8 +64,10 @@ interface UIState {
   location: string;
   coords: { lat: number; lng: number };
   locationAccuracy: number | null;
-  locationLocked: boolean;
-  locationSource: 'default' | 'gps' | 'manual' | 'account';
+  locationReady: boolean;
+  locationSource: 'pending' | 'gps' | 'search';
+  locationDetecting: boolean;
+  locationError: string | null;
   language: string;
   largeText: boolean;
   reducedMotion: boolean;
@@ -79,7 +84,10 @@ interface UIState {
   clearToast: () => void;
   setLocation: (location: string) => void;
   setCoords: (lat: number, lng: number, label?: string, accuracyMeters?: number | null, source?: UIState['locationSource']) => void;
-  setLocationLocked: (locked: boolean) => void;
+  resetLocation: () => void;
+  applyGpsLocation: (lat: number, lng: number, label: string, accuracyMeters?: number | null) => void;
+  setLocationDetecting: (detecting: boolean) => void;
+  setLocationError: (error: string | null) => void;
   setLanguage: (language: string) => void;
   setLargeText: (v: boolean) => void;
   setReducedMotion: (v: boolean) => void;
@@ -98,11 +106,13 @@ export const useUIStore = create<UIState>()(
       messageModal: null,
       infoModal: null,
       toast: null,
-      location: 'Konaseema, Andhra Pradesh',
-      coords: { lat: 16.579, lng: 82.006 },
+      location: '',
+      coords: { lat: 0, lng: 0 },
       locationAccuracy: null,
-      locationLocked: false,
-      locationSource: 'default',
+      locationReady: false,
+      locationSource: 'pending',
+      locationDetecting: false,
+      locationError: null,
       language: 'en',
       largeText: false,
       reducedMotion: false,
@@ -124,26 +134,39 @@ export const useUIStore = create<UIState>()(
           coords: { lat, lng },
           locationAccuracy: accuracyMeters !== undefined ? accuracyMeters : s.locationAccuracy,
           locationSource: source ?? s.locationSource,
+          locationReady: source === 'gps' || source === 'search',
           ...(label ? { location: label } : {}),
         })),
-      setLocationLocked: (locationLocked) =>
-        set((s) => ({
-          locationLocked,
-          ...(locationLocked ? { locationSource: 'manual' as const } : {}),
-          ...(!locationLocked && s.locationSource === 'manual' ? { locationSource: 'default' as const } : {}),
-        })),
+      resetLocation: () =>
+        set({
+          location: '',
+          coords: { lat: 0, lng: 0 },
+          locationAccuracy: null,
+          locationReady: false,
+          locationSource: 'pending',
+          locationError: null,
+        }),
+      applyGpsLocation: (lat, lng, label, accuracyMeters) =>
+        set({
+          coords: { lat, lng },
+          location: label,
+          locationAccuracy: accuracyMeters ?? null,
+          locationReady: true,
+          locationSource: 'gps',
+          locationError: null,
+        }),
+      setLocationDetecting: (locationDetecting) => set({ locationDetecting }),
+      setLocationError: (locationError) => set({ locationError }),
       setLanguage: (language) => set({ language }),
       setLargeText: (largeText) => set({ largeText }),
       setReducedMotion: (reducedMotion) => set({ reducedMotion }),
     }),
     {
-      name: 'localpro-ui-v5',
+      name: 'localpro-ui-v7',
       partialize: (s) => ({
-        location: s.location,
-        coords: s.coords,
-        locationAccuracy: s.locationAccuracy,
-        locationLocked: s.locationLocked,
-        locationSource: s.locationSource,
+        language: s.language,
+        largeText: s.largeText,
+        reducedMotion: s.reducedMotion,
       }),
     }
   )
