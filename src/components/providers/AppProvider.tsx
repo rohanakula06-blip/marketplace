@@ -30,7 +30,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       } catch {
         setBackendStatus('error');
-        showToast('Backend unavailable. Start the server with npm run dev', 'error');
+        const isLocal = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+        showToast(
+          isLocal
+            ? 'Backend unavailable. Start the server with npm run dev'
+            : 'Database not connected. Set DATABASE_URL and JWT_SECRET in Vercel, then redeploy.',
+          'error'
+        );
       }
 
       try {
@@ -64,7 +70,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       {backendStatus === 'connected' && (
         <div className="fixed bottom-4 left-4 z-50 flex items-center gap-2 bg-green-50 text-green-700 text-xs px-3 py-1.5 rounded-full border border-green-200 shadow-sm">
           <Wifi size={12} />
-          Backend connected · SQLite DB
+          Backend connected · Database live
         </div>
       )}
       {backendStatus === 'error' && (
