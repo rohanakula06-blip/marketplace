@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { exchangeGoogleCode, getGoogleUser, isGoogleConfigured } from '@/lib/google-auth';
-import { hashPassword, createSession, setAuthCookie } from '@/lib/auth';
+import { hashPassword, createSession, setAuthCookie, sessionClaimsFromUser } from '@/lib/auth';
 import { normalizeEmail } from '@/lib/email';
 import { DEFAULT_LOCATION, DEMO_COORDS } from '@/lib/constants';
 
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const { token } = await createSession(user.id);
+    const { token } = await createSession(user.id, sessionClaimsFromUser(user));
     await setAuthCookie(token);
 
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard/customer?welcome=google`);

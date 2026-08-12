@@ -3,34 +3,38 @@ import prisma from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
-  const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { searchParams } = new URL(req.url);
-  const role = searchParams.get('role') || 'customer';
+    const { searchParams } = new URL(req.url);
+    const role = searchParams.get('role') || 'customer';
 
-  const where =
-    role === 'worker'
-      ? { workerId: user.id }
-      : { customerId: user.id };
+    const where =
+      role === 'worker'
+        ? { workerId: user.id }
+        : { customerId: user.id };
 
-  const bookings = await prisma.booking.findMany({
-    where,
-    include: {
-      customer: { select: { id: true, name: true } },
-      worker: {
-        select: {
-          id: true,
-          name: true,
-          workerProfile: true,
+    const bookings = await prisma.booking.findMany({
+      where,
+      include: {
+        customer: { select: { id: true, name: true } },
+        worker: {
+          include: { workerProfile: true },
         },
+        job: true,
       },
-      job: true,
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+      orderBy: { createdAt: 'desc' },
+    });
 
-  return NextResponse.json({ bookings });
+    return NextResponse.json({ bookings });
+  } catch (error) {
+    console.error('[Bookings GET]', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to load bookings' },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(req: NextRequest) {

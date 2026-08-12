@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { hashPassword, verifyPassword, createSession, setAuthCookie, sanitizeUser } from '@/lib/auth';
+import { hashPassword, verifyPassword, createSession, setAuthCookie, sanitizeUser, sessionClaimsFromUser } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Incorrect password. Try again or use email/mobile OTP.' }, { status: 401 });
     }
 
-    const { token } = await createSession(user.id);
+    const { token } = await createSession(user.id, sessionClaimsFromUser(user));
     await setAuthCookie(token);
 
     return NextResponse.json({ user: sanitizeUser(user) });

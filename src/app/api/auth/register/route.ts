@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { hashPassword, createSession, setAuthCookie, sanitizeUser } from '@/lib/auth';
+import { hashPassword, createSession, setAuthCookie, sanitizeUser, sessionClaimsFromUser } from '@/lib/auth';
 import { DEFAULT_LOCATION, DEMO_COORDS } from '@/lib/constants';
 
 export async function POST(req: NextRequest) {
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
       // non-blocking
     }
 
-    const { token } = await createSession(user.id);
+    const { token } = await createSession(user.id, sessionClaimsFromUser(user));
     await setAuthCookie(token);
 
     return NextResponse.json({ user: sanitizeUser(user) }, { status: 201 });

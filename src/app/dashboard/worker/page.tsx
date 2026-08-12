@@ -21,15 +21,26 @@ export default function WorkerDashboard() {
   const loadData = useCallback(async () => {
     if (!user || !initialized) return;
     setLoading(true);
-    try {
-      const jobsRes = await api.jobs.list({ lat: coords.lat, lng: coords.lng, status: 'open' });
-      const bookingsRes = await api.bookings.list('worker');
-      setJobs(jobsRes.jobs || []);
-      setBookings(bookingsRes.bookings || []);
-    } finally {
-      setLoading(false);
+
+    const results = await Promise.allSettled([
+      api.jobs.list({ lat: coords.lat, lng: coords.lng, status: 'open' }),
+      api.bookings.list('worker'),
+    ]);
+
+    const [jobsRes, bookingsRes] = results;
+
+    if (jobsRes.status === 'fulfilled') {
+      setJobs(jobsRes.value.jobs || []);
+    } else {
+      showToast('Could not load nearby jobs', 'error');
     }
-  }, [user, initialized, coords.lat, coords.lng]);
+
+    if (bookingsRes.status === 'fulfilled') {
+      setBookings(bookingsRes.value.bookings || []);
+    }
+
+    setLoading(false);
+  }, [user, initialized, coords.lat, coords.lng, showToast]);
 
   useEffect(() => {
     if (!authReady) return;

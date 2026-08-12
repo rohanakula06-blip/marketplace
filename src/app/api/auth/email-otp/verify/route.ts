@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { normalizeEmail, isValidEmail } from '@/lib/email';
-import { hashPassword, createSession, setAuthCookie, sanitizeUser } from '@/lib/auth';
+import { hashPassword, createSession, setAuthCookie, sanitizeUser, sessionClaimsFromUser } from '@/lib/auth';
 import { DEFAULT_LOCATION, DEMO_COORDS } from '@/lib/constants';
 
 const MAX_ATTEMPTS = 5;
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const { token } = await createSession(user.id);
+    const { token } = await createSession(user.id, sessionClaimsFromUser(user));
     await setAuthCookie(token);
 
     return NextResponse.json({ user: sanitizeUser(user), message: 'Login successful' });

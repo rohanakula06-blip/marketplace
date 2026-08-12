@@ -31,18 +31,36 @@ export default function CustomerDashboard() {
 
   const loadData = useCallback(async () => {
     if (!user || !initialized) return;
-    try {
-      const [workersRes, bookingsRes, jobsRes, notifRes] = await Promise.all([
-        api.workers.list({ lat: coords.lat, lng: coords.lng, sort: 'best_match' }),
-        api.bookings.list('customer'),
-        api.jobs.mine('all'),
-        api.notifications.list(),
-      ]);
-      setWorkers(workersRes.workers || []);
-      setBookings(bookingsRes.bookings || []);
-      setMyJobs(jobsRes.jobs || []);
-      setNotifications(notifRes.notifications || []);
-    } catch {
+
+    const results = await Promise.allSettled([
+      api.workers.list({ lat: coords.lat, lng: coords.lng, sort: 'best_match' }),
+      api.bookings.list('customer'),
+      api.jobs.mine('all'),
+      api.notifications.list(),
+    ]);
+
+    const [workersRes, bookingsRes, jobsRes, notifRes] = results;
+
+    if (workersRes.status === 'fulfilled') {
+      setWorkers(workersRes.value.workers || []);
+    } else {
+      showToast('Could not load nearby workers', 'error');
+    }
+
+    if (bookingsRes.status === 'fulfilled') {
+      setBookings(bookingsRes.value.bookings || []);
+    }
+
+    if (jobsRes.status === 'fulfilled') {
+      setMyJobs(jobsRes.value.jobs || []);
+    }
+
+    if (notifRes.status === 'fulfilled') {
+      setNotifications(notifRes.value.notifications || []);
+    }
+
+    const failed = results.filter((r) => r.status === 'rejected').length;
+    if (failed === results.length) {
       showToast('Failed to load dashboard data', 'error');
     }
   }, [user, initialized, coords.lat, coords.lng, showToast]);

@@ -6,6 +6,16 @@ import prisma from './db';
 const JWT_SECRET = process.env.JWT_SECRET || 'localpro-secret';
 const TOKEN_EXPIRY = '7d';
 
+export type SessionClaims = {
+  email: string;
+  name: string;
+  role: string;
+  phone?: string | null;
+  location?: string | null;
+};
+
+export type TokenPayload = SessionClaims & { userId: string };
+
 export async function hashPassword(password: string) {
   return bcrypt.hash(password, 12);
 }
@@ -14,20 +24,37 @@ export async function verifyPassword(password: string, hash: string) {
   return bcrypt.compare(password, hash);
 }
 
-export function signToken(userId: string) {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
+export function signToken(userId: string, claims: SessionClaims) {
+  return jwt.sign({ userId, ...claims }, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
 }
 
-export function verifyToken(token: string) {
+export function verifyToken(token: string): TokenPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as { userId: string };
+    return jwt.verify(token, JWT_SECRET) as TokenPayload;
   } catch {
     return null;
   }
 }
 
-export async function createSession(userId: string) {
-  const token = signToken(userId);
+function userFromTokenClaims(payload: TokenPayload) {
+  if (!payload.email || !payload.name || !payload.role) return null;
+
+  return {
+    id: payload.userId,
+    name: payload.name,
+    email: payload.email,
+    phone: payload.phone ?? null,
+    role: payload.role,
+    location: payload.location ?? null,
+    language: 'en',
+    largeText: false,
+    reducedMotion: false,
+    workerProfile: null,
+  };
+}
+
+export async function createSession(userId: string, claims: SessionClaims) {
+  const token = signToken(userId, claims);
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   try {
     await prisma.session.create({ data: { userId, token, expiresAt } });
@@ -62,15 +89,18 @@ export async function getCurrentUser() {
     // Session lookup can fail when DB is ephemeral across serverless instances.
   }
 
-  // Stateless fallback: valid JWT → load user directly (works on Vercel serverless).
   try {
-    return await prisma.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { id: payload.userId },
       include: { workerProfile: true },
     });
+    if (user) return user;
   } catch {
-    return null;
+    // DB read can fail on serverless.
   }
+
+  // JWT claims fallback — user registered on another serverless instance (Vercel SQLite).
+  return userFromTokenClaims(payload);
 }
 
 export async function setAuthCookie(token: string) {
@@ -112,5 +142,21 @@ export function sanitizeUser(user: {
     largeText: user.largeText,
     reducedMotion: user.reducedMotion,
     workerProfile: user.workerProfile || null,
+  };
+}
+
+export function sessionClaimsFromUser(user: {
+  email: string;
+  name: string;
+  role: string;
+  phone?: string | null;
+  location?: string | null;
+}): SessionClaims {
+  return {
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    phone: user.phone ?? null,
+    location: user.location ?? null,
   };
 }

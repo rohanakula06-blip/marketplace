@@ -5,7 +5,8 @@ import { calculateMatchScore } from '@/lib/ai';
 import { DEMO_COORDS } from '@/lib/constants';
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
+  try {
+    const { searchParams } = new URL(req.url);
   const category = searchParams.get('category');
   const search = searchParams.get('search');
   const sort = searchParams.get('sort') || 'best_match';
@@ -81,4 +82,11 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({ workers: results });
+  } catch (error) {
+    console.error('[Workers GET]', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to load workers' },
+      { status: 500 }
+    );
+  }
 }
