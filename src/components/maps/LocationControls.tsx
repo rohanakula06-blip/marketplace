@@ -18,7 +18,7 @@ interface LocationControlsProps {
 export function LocationControls({ compact = false, className }: LocationControlsProps) {
   const { location, coords, locationAccuracy, locationReady, showToast } = useUIStore();
   const user = useAuthStore((s) => s.user);
-  const { useGps } = useCurrentLocation();
+  const { requestGps } = useCurrentLocation();
   const [manualInput, setManualInput] = useState('');
   const [searching, setSearching] = useState(false);
 
@@ -50,7 +50,7 @@ export function LocationControls({ compact = false, className }: LocationControl
     <div className={cn('space-y-3', className)}>
       <button
         type="button"
-        onClick={() => useGps()}
+        onClick={() => requestGps()}
         className={cn(
           'flex w-full items-center justify-center gap-2 rounded-xl font-medium transition-all',
           compact ? 'px-4 py-2 text-sm bg-blue-600 text-white hover:bg-blue-700' : 'btn-primary'

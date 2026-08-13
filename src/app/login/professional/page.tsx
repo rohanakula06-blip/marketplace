@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Briefcase } from 'lucide-react';
-import { AuthPageShell } from '@/components/auth/AuthPageShell';
+import { SignInShell } from '@/components/auth/SignInShell';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { useAuthStore, useUIStore } from '@/store/app-store';
 import { requestLiveLocation, resetLocationState } from '@/lib/location-service';
@@ -36,36 +36,37 @@ export default function ProfessionalLoginPage() {
   };
 
   return (
-    <AuthPageShell>
+    <SignInShell>
       <div className="text-center mb-6">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-teal-600 mb-4 shadow-lg shadow-teal-600/40">
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-teal-500 mb-4 shadow-lg shadow-teal-500/25">
           <Briefcase size={28} className="text-white" />
         </div>
         <h1 className="text-2xl font-bold text-white">{t('auth.proLogin')}</h1>
-        <p className="text-slate-200 mt-2 text-sm">{t('auth.signInSubtitle')}</p>
+        <p className="text-slate-400 mt-2 text-sm">{t('auth.signInSubtitle')}</p>
       </div>
 
       <LoginForm
         variant="professional"
         journey="worker"
+        theme="dark"
         onSuccess={handleSuccess}
         footer={
           <>
-            <p className="text-center text-sm text-slate-700 pt-2">
+            <p className="text-center text-sm text-slate-400 pt-2">
               {t('auth.newPro')}{' '}
-              <Link href="/register/worker" className="text-teal-700 font-semibold hover:underline">
+              <Link href="/register/worker" className="text-teal-400 font-semibold hover:underline">
                 {t('auth.registerHere')}
               </Link>
             </p>
-            <p className="text-center text-xs text-slate-600">
+            <p className="text-center text-xs text-slate-500">
               {t('auth.lookingForService')}{' '}
-              <Link href="/login" className="text-blue-700 font-semibold hover:underline">
+              <Link href="/login" className="text-amber-400 font-semibold hover:underline">
                 {t('auth.customerSignIn')}
               </Link>
             </p>
           </>
         }
       />
-    </AuthPageShell>
+    </SignInShell>
   );
 }

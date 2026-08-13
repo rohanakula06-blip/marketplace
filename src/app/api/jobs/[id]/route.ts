@@ -27,6 +27,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const body = await req.json();
-  const job = await prisma.job.update({ where: { id }, data: body });
+
+  const existing = await prisma.job.findUnique({ where: { id } });
+  if (!existing) return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+  if (existing.customerId !== user.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  const data: Record<string, unknown> = {};
+  if (body.status === 'completed' || body.status === 'cancelled') {
+    data.status = body.status;
+  }
+
+  if (Object.keys(data).length === 0) {
+    return NextResponse.json({ error: 'No valid updates' }, { status: 400 });
+  }
+
+  const job = await prisma.job.update({ where: { id }, data });
   return NextResponse.json({ job });
 }

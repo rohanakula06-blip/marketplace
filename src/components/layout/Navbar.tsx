@@ -28,13 +28,17 @@ export function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const onLanding = pathname === '/';
-  const isAuthRoute =
+  const isSignInRoute =
     pathname?.startsWith('/login') ||
+    pathname === '/dashboard';
+  const isTeakPublicRoute =
     pathname?.startsWith('/register') ||
     pathname === '/forgot-password' ||
-    pathname?.startsWith('/reset-password') ||
-    pathname === '/dashboard';
-  const darkNav = (onLanding || isAuthRoute) && !scrolled;
+    pathname?.startsWith('/reset-password');
+  const isDarkAppRoute =
+    (pathname?.startsWith('/dashboard/') || pathname === '/bookings') && pathname !== '/dashboard';
+  const landingNav = isTeakPublicRoute && !isSignInRoute;
+  const darkNav = (onLanding || isSignInRoute || isDarkAppRoute) && !scrolled;
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -53,30 +57,45 @@ export function Navbar() {
   return (
     <nav className={cn(
       'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
-      darkNav
-        ? 'bg-slate-950/85 backdrop-blur-md py-4 border-b border-white/10 shadow-lg shadow-black/20'
-        : scrolled
-          ? 'bg-white/95 backdrop-blur-md shadow-sm py-3'
-          : 'bg-white/95 backdrop-blur-sm py-4 border-b border-slate-200'
+      landingNav
+        ? scrolled
+          ? 'bg-teak-50/95 backdrop-blur-md py-3 border-b border-teak-200 shadow-sm'
+          : 'bg-teak-50/85 backdrop-blur-md py-4 border-b border-teak-200/70'
+        : darkNav
+          ? scrolled
+            ? 'bg-slate-950/90 backdrop-blur-md py-3 border-b border-white/10 shadow-lg shadow-black/20'
+            : 'bg-slate-950/85 backdrop-blur-md py-4 border-b border-white/10 shadow-lg shadow-black/20'
+          : scrolled
+            ? 'bg-white/95 backdrop-blur-md shadow-sm py-3'
+            : 'bg-white/95 backdrop-blur-sm py-4 border-b border-slate-200'
     )}>
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 lg:px-8">
         <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 shadow-md">
+          <div className={cn(
+            'flex h-9 w-9 items-center justify-center rounded-xl shadow-md',
+            landingNav ? 'bg-teak-600' : 'bg-blue-600'
+          )}>
             <MapPin size={18} className="text-white" fill="white" />
           </div>
-          <span className={cn('text-xl font-bold tracking-tight', darkNav ? 'text-white' : 'text-blue-700')}>
+          <span className={cn(
+            'text-xl font-bold tracking-tight',
+            landingNav ? 'text-teak-900' : darkNav ? 'text-white' : 'text-blue-700'
+          )}>
             LocalPro
           </span>
         </Link>
 
-        <div className={cn('hidden lg:flex items-center gap-6 text-sm font-medium', darkNav ? 'text-slate-100' : 'text-slate-700')}>
+        <div className={cn(
+          'hidden lg:flex items-center gap-6 text-sm font-medium',
+          landingNav ? 'text-teak-800' : darkNav ? 'text-slate-100' : 'text-slate-700'
+        )}>
           {NAV_LINKS.map((l) =>
             'modal' in l && l.modal ? (
-              <button key={l.labelKey} type="button" onClick={() => setInfoModal(l.modal)} className={cn('transition-colors', darkNav ? 'hover:text-amber-300' : 'hover:text-blue-600')}>
+              <button key={l.labelKey} type="button" onClick={() => setInfoModal(l.modal)} className={cn('transition-colors', landingNav ? 'hover:text-teak-600' : darkNav ? 'hover:text-amber-300' : 'hover:text-blue-600')}>
                 {t(l.labelKey)}
               </button>
             ) : (
-              <Link key={l.href} href={l.href} className={cn('transition-colors', darkNav ? 'hover:text-amber-300' : 'hover:text-blue-600')}>{t(l.labelKey)}</Link>
+              <Link key={l.href} href={l.href} className={cn('transition-colors', landingNav ? 'hover:text-teak-600' : darkNav ? 'hover:text-amber-300' : 'hover:text-blue-600')}>{t(l.labelKey)}</Link>
             )
           )}
         </div>
@@ -85,9 +104,9 @@ export function Navbar() {
           {locationReady && (
             <div className={cn(
               'flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full',
-              darkNav ? 'text-slate-100 bg-white/15' : 'text-slate-600 bg-slate-100'
+              landingNav ? 'text-teak-700 bg-teak-100' : darkNav ? 'text-slate-100 bg-white/15' : 'text-slate-600 bg-slate-100'
             )}>
-              <MapPin size={12} className={darkNav ? 'text-amber-400' : 'text-blue-600'} />
+              <MapPin size={12} className={landingNav ? 'text-teak-600' : darkNav ? 'text-amber-400' : 'text-blue-600'} />
               <span className="max-w-[120px] truncate">{location.split(',')[0]}</span>
             </div>
           )}
@@ -100,23 +119,30 @@ export function Navbar() {
 
           {user ? (
             <>
-              <Link href="/bookings" className={cn('text-sm font-medium', darkNav ? 'text-slate-100 hover:text-white' : 'text-slate-700 hover:text-blue-600')}>{t('nav.myBookings')}</Link>
-              <Link href="/messages" className={cn('text-sm font-medium', darkNav ? 'text-slate-100 hover:text-white' : 'text-slate-700 hover:text-blue-600')}>{t('nav.messages')}</Link>
+              <Link href="/bookings" className={cn('text-sm font-medium', landingNav ? 'text-teak-800 hover:text-teak-600' : darkNav ? 'text-slate-100 hover:text-white' : 'text-slate-700 hover:text-blue-600')}>{t('nav.myBookings')}</Link>
+              <Link href="/messages" className={cn('text-sm font-medium', landingNav ? 'text-teak-800 hover:text-teak-600' : darkNav ? 'text-slate-100 hover:text-white' : 'text-slate-700 hover:text-blue-600')}>{t('nav.messages')}</Link>
               <Link
                 href={user.workerProfile ? '/dashboard/worker' : '/dashboard/customer'}
-                className="text-sm font-medium text-white bg-blue-600 px-4 py-2 rounded-xl hover:bg-blue-700"
+                className={cn(
+                  'text-sm font-medium text-white px-4 py-2 rounded-xl',
+                  user.workerProfile ? 'bg-teal-600 hover:bg-teal-500' : 'bg-blue-600 hover:bg-blue-700'
+                )}
               >
-                {t('nav.myAccount')}
+                {user.workerProfile ? t('nav.proAccount') : t('nav.userAccount')}
               </Link>
-              <button onClick={handleLogout} className={cn('text-sm', darkNav ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-900')}>{t('nav.logout')}</button>
+              <button onClick={handleLogout} className={cn('text-sm', landingNav ? 'text-teak-600 hover:text-teak-800' : darkNav ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-900')}>{t('nav.logout')}</button>
             </>
           ) : (
             <>
               <Link
                 href="/login"
                 className={cn(
-                  'text-sm font-medium px-3 py-2 transition-colors',
-                  darkNav ? 'text-white hover:text-amber-200' : 'text-slate-700 hover:text-blue-600'
+                  'text-sm font-medium px-4 py-2 rounded-xl transition-all',
+                  darkNav
+                    ? 'border border-white/20 bg-white/10 text-white backdrop-blur-sm hover:border-amber-400/50 hover:bg-white/15'
+                    : landingNav
+                      ? 'text-teak-800 hover:text-teak-600'
+                      : 'text-slate-700 hover:text-blue-600'
                 )}
               >
                 {t('nav.loginUser')}
@@ -124,10 +150,12 @@ export function Navbar() {
               <Link
                 href="/login/professional"
                 className={cn(
-                  'text-sm font-semibold px-4 py-2 rounded-xl shadow-lg',
+                  'text-sm font-semibold px-4 py-2 rounded-xl shadow-lg transition-all',
                   darkNav
-                    ? 'text-slate-900 bg-gradient-to-r from-amber-400 to-orange-400 hover:from-amber-300 hover:to-orange-300 shadow-amber-500/25'
-                    : 'text-slate-900 bg-gradient-to-r from-amber-400 to-orange-400 hover:from-amber-300 hover:to-orange-300 shadow-amber-500/20'
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-900 shadow-amber-500/25 hover:shadow-amber-500/40 hover:from-amber-400 hover:to-orange-400'
+                    : landingNav
+                      ? 'text-teak-50 bg-teak-600 hover:bg-teak-700 shadow-teak-900/15'
+                      : 'text-slate-900 bg-gradient-to-r from-amber-400 to-orange-400 hover:from-amber-300 hover:to-orange-300 shadow-amber-500/20'
                 )}
               >
                 {t('nav.loginPro')}
@@ -136,46 +164,64 @@ export function Navbar() {
           )}
         </div>
 
-        <button className={cn('md:hidden', darkNav ? 'text-white' : 'text-slate-800')} onClick={() => setMobileOpen(!mobileOpen)}>
+        <button className={cn('md:hidden', landingNav ? 'text-teak-900' : darkNav ? 'text-white' : 'text-slate-800')} onClick={() => setMobileOpen(!mobileOpen)}>
           {mobileOpen ? <X /> : <Menu />}
         </button>
       </div>
 
       {mobileOpen && (
-        <div className="md:hidden bg-white border-t border-slate-100 mx-4 mt-2 rounded-2xl p-4 space-y-1 shadow-lg">
+        <div className={cn(
+          'md:hidden mx-4 mt-2 rounded-2xl p-4 space-y-1 shadow-lg border',
+          darkNav
+            ? 'bg-slate-900/95 border-white/10 backdrop-blur-xl'
+            : 'bg-white border-slate-100'
+        )}>
           {NAV_LINKS.map((l) =>
             'modal' in l && l.modal ? (
-              <button key={l.labelKey} type="button" onClick={() => { setInfoModal(l.modal); setMobileOpen(false); }} className="block w-full text-left py-2.5 text-slate-600 hover:text-blue-600 font-medium">
+              <button key={l.labelKey} type="button" onClick={() => { setInfoModal(l.modal); setMobileOpen(false); }} className={cn('block w-full text-left py-2.5 font-medium', darkNav ? 'text-slate-300 hover:text-amber-300' : 'text-slate-600 hover:text-blue-600')}>
                 {t(l.labelKey)}
               </button>
             ) : (
-              <Link key={l.href} href={l.href} onClick={() => setMobileOpen(false)} className="block py-2.5 text-slate-600 hover:text-blue-600 font-medium">{t(l.labelKey)}</Link>
+              <Link key={l.href} href={l.href} onClick={() => setMobileOpen(false)} className={cn('block py-2.5 font-medium', darkNav ? 'text-slate-300 hover:text-amber-300' : 'text-slate-600 hover:text-blue-600')}>{t(l.labelKey)}</Link>
             )
           )}
-          <div className="py-3 border-t border-slate-100 mt-2">
+          <div className={cn('py-3 border-t mt-2', darkNav ? 'border-white/10' : 'border-slate-100')}>
             <LanguageSwitcher variant="footer" />
           </div>
           {user ? (
             <Link
               href={user.workerProfile ? '/dashboard/worker' : '/dashboard/customer'}
               onClick={() => setMobileOpen(false)}
-              className="block w-full text-center btn-primary mt-2"
+              className={cn(
+                'block w-full text-center mt-2 py-2.5 rounded-xl font-medium text-white',
+                user.workerProfile ? 'bg-teal-600 hover:bg-teal-500' : 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-900'
+              )}
             >
-              {t('nav.myAccount')}
+              {user.workerProfile ? t('nav.proAccount') : t('nav.userAccount')}
             </Link>
           ) : (
-            <div className="pt-2 space-y-2 border-t border-slate-100 mt-2">
+            <div className={cn('pt-2 space-y-2 border-t mt-2', darkNav ? 'border-white/10' : 'border-slate-100')}>
               <Link
                 href="/login"
                 onClick={() => setMobileOpen(false)}
-                className="block w-full text-center py-2.5 rounded-xl border border-blue-200 text-blue-700 font-medium hover:bg-blue-50"
+                className={cn(
+                  'block w-full text-center py-2.5 rounded-xl font-medium',
+                  darkNav
+                    ? 'border border-white/20 bg-white/10 text-white hover:bg-white/15'
+                    : 'border border-blue-200 text-blue-700 hover:bg-blue-50'
+                )}
               >
                 {t('nav.loginUser')}
               </Link>
               <Link
                 href="/login/professional"
                 onClick={() => setMobileOpen(false)}
-                className="block w-full text-center py-2.5 rounded-xl bg-teal-600 text-white font-medium hover:bg-teal-500"
+                className={cn(
+                  'block w-full text-center py-2.5 rounded-xl font-semibold',
+                  darkNav
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-900 shadow-lg shadow-amber-500/20'
+                    : 'bg-teal-600 text-white hover:bg-teal-500'
+                )}
               >
                 {t('nav.loginPro')}
               </Link>

@@ -36,7 +36,7 @@ export function LocationMapSection({
   footer,
   compact = false,
 }: LocationMapSectionProps) {
-  const { coords, location, accuracy, useGps, locationReady, isDetecting, error } = useCurrentLocation();
+  const { coords, location, accuracy, requestGps, locationReady, isDetecting, error } = useCurrentLocation();
   const { t } = useTranslation();
 
   const accuracyLabel = formatAccuracy(accuracy ?? undefined);
@@ -86,7 +86,7 @@ export function LocationMapSection({
 
         <button
           type="button"
-          onClick={() => useGps()}
+          onClick={() => requestGps()}
           disabled={isDetecting}
           className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 shrink-0 disabled:opacity-60"
         >
@@ -111,7 +111,7 @@ export function LocationMapSection({
             accuracyMeters={accuracy}
             height={height}
             onMarkerClick={onMarkerClick}
-            onRecenter={() => useGps()}
+            onRecenter={() => requestGps()}
             recentering={isDetecting}
             animateCenter
           />
@@ -131,7 +131,7 @@ export function LocationMapSection({
                 <p className="text-sm text-slate-600 max-w-xs">{t('location.mapPending')}</p>
                 <button
                   type="button"
-                  onClick={() => useGps()}
+                  onClick={() => requestGps()}
                   className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
                 >
                   {t('location.useMyLocation')}

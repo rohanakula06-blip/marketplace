@@ -20,6 +20,8 @@ export const translations: Record<LanguageCode, TranslationTree> = {
       myBookings: 'My Bookings',
       messages: 'Messages',
       myAccount: 'My Account',
+      userAccount: 'User Account',
+      proAccount: 'Pro Dashboard',
       logout: 'Logout',
     },
     hero: {
@@ -146,6 +148,8 @@ export const translations: Record<LanguageCode, TranslationTree> = {
       myBookings: 'मेरी बुकिंग',
       messages: 'संदेश',
       myAccount: 'मेरा खाता',
+      userAccount: 'यूज़र खाता',
+      proAccount: 'प्रो डैशबोर्ड',
       logout: 'लॉग आउट',
     },
     hero: {
@@ -272,6 +276,8 @@ export const translations: Record<LanguageCode, TranslationTree> = {
       myBookings: 'నా బుకింగ్‌లు',
       messages: 'సందేశాలు',
       myAccount: 'నా ఖాతా',
+      userAccount: 'యూజర్ ఖాతా',
+      proAccount: 'ప్రో డాష్‌బోర్డ్',
       logout: 'లాగ్ అవుట్',
     },
     hero: {

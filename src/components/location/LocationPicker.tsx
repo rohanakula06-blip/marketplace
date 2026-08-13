@@ -34,7 +34,7 @@ interface LocationPickerProps {
 export function LocationPicker({ showMap = true, compact = false, className }: LocationPickerProps) {
   const { location, locationReady, showToast } = useUIStore();
   const user = useAuthStore((s) => s.user);
-  const { useGps } = useCurrentLocation();
+  const { requestGps } = useCurrentLocation();
   const { t } = useTranslation();
   const [manualInput, setManualInput] = useState('');
   const [searching, setSearching] = useState(false);
@@ -128,7 +128,7 @@ export function LocationPicker({ showMap = true, compact = false, className }: L
     <div className={cn('space-y-4', className)}>
       <button
         type="button"
-        onClick={() => useGps()}
+        onClick={() => requestGps()}
         disabled={saving}
         className={cn(
           'flex items-center gap-2 rounded-xl font-medium transition-all',

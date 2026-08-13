@@ -33,16 +33,10 @@ export function HeroSection() {
 
   return (
     <section id="home" className="relative min-h-screen overflow-hidden bg-[#060912]">
-      <div
-        className="absolute inset-0 z-0 hero-bg-scene"
-        style={{ backgroundImage: "url('/hero-background.png')" }}
-      />
-      <div className="absolute inset-0 z-[1] hero-overlay-night" />
-      <div className="absolute inset-0 z-[1] hero-pin-glow pointer-events-none" />
+      <div className="absolute inset-0 hero-dark-ambient pointer-events-none" />
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 lg:px-8 pt-28 pb-16">
-        <div className="grid lg:grid-cols-12 gap-10 lg:gap-8 items-start">
-          <div className="lg:col-span-6 xl:col-span-5">
+        <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-200 mb-6 backdrop-blur-sm">
               <Sparkles size={16} className="text-amber-400" />
               {t('hero.badge')}
@@ -76,11 +70,9 @@ export function HeroSection() {
                 </div>
               ))}
             </div>
-          </div>
-          <div className="hidden lg:block lg:col-span-6 xl:col-span-7" aria-hidden />
         </div>
 
-        <div className="mt-12 rounded-2xl border border-white/10 bg-slate-900/60 backdrop-blur-xl p-6 shadow-2xl shadow-black/40">
+        <div className="mt-12 max-w-3xl rounded-2xl border border-white/10 bg-slate-900/60 backdrop-blur-xl p-6 shadow-2xl shadow-black/40">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             {stats.map((s) => (
               <div key={s.labelKey}>

@@ -2,6 +2,27 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 
+const WORKER_NEXT: Record<string, string[]> = {
+  requested: ['accepted', 'cancelled'],
+  accepted: ['arriving', 'started', 'cancelled'],
+  confirmed: ['arriving', 'started'],
+  arriving: ['started'],
+  started: ['completed'],
+};
+
+const CUSTOMER_NEXT: Record<string, string[]> = {
+  accepted: ['confirmed', 'cancelled'],
+  completed: ['paid'],
+};
+
+async function closeLinkedJob(jobId: string | null | undefined) {
+  if (!jobId) return;
+  await prisma.job.updateMany({
+    where: { id: jobId, status: { in: ['open', 'assigned'] } },
+    data: { status: 'completed' },
+  });
+}
+
 export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUser();
@@ -42,6 +63,20 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json();
+
+  const workerProfile = await prisma.workerProfile.findUnique({
+    where: { userId: body.workerId },
+  });
+  if (!workerProfile) {
+    return NextResponse.json({ error: 'Professional not found' }, { status: 404 });
+  }
+  if (!workerProfile.isAvailable) {
+    return NextResponse.json(
+      { error: 'This professional is currently offline and not accepting bookings.' },
+      { status: 409 }
+    );
+  }
+
   const booking = await prisma.booking.create({
     data: {
       customerId: user.id,
@@ -63,7 +98,7 @@ export async function POST(req: NextRequest) {
     data: {
       userId: body.workerId,
       title: 'New Booking Request',
-      message: `${user.name} requested a ${body.service} booking.`,
+      message: `${user.name} requested a ${body.service} booking for ${body.date} at ${body.time}.`,
       type: 'info',
     },
   });
@@ -75,19 +110,70 @@ export async function PATCH(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { id, status } = await req.json();
+  const { id, status, action } = await req.json();
+
+  const existing = await prisma.booking.findUnique({
+    where: { id },
+    include: { job: true },
+  });
+  if (!existing) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+
+  const isCustomer = user.id === existing.customerId;
+  const isWorker = user.id === existing.workerId;
+  if (!isCustomer && !isWorker) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  // Customer confirms task done — closes linked job from Find Work
+  if (action === 'confirm_task') {
+    if (!isCustomer) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!['completed', 'paid', 'reviewed'].includes(existing.status)) {
+      return NextResponse.json({ error: 'Work must be marked complete first' }, { status: 400 });
+    }
+    await closeLinkedJob(existing.jobId);
+    await prisma.notification.create({
+      data: {
+        userId: existing.workerId,
+        title: 'Task confirmed',
+        message: `${user.name} confirmed the task is completed.`,
+        type: 'success',
+      },
+    });
+    return NextResponse.json({ booking: existing, jobClosed: true });
+  }
+
+  if (!status) return NextResponse.json({ error: 'status required' }, { status: 400 });
+
+  const allowed = isWorker
+    ? WORKER_NEXT[existing.status] ?? []
+    : CUSTOMER_NEXT[existing.status] ?? [];
+
+  if (!allowed.includes(status)) {
+    return NextResponse.json(
+      { error: `Cannot change status from "${existing.status}" to "${status}"` },
+      { status: 400 }
+    );
+  }
+
   const booking = await prisma.booking.update({
     where: { id },
     data: { status },
-    include: { customer: true, worker: true },
+    include: { customer: true, worker: true, job: true },
   });
 
-  const notifyId = user.id === booking.customerId ? booking.workerId : booking.customerId;
+  if (status === 'completed') {
+    await prisma.workerProfile.update({
+      where: { userId: existing.workerId },
+      data: { completedJobs: { increment: 1 } },
+    });
+  }
+
+  const notifyId = isCustomer ? booking.workerId : booking.customerId;
   await prisma.notification.create({
     data: {
       userId: notifyId,
       title: 'Booking Updated',
-      message: `Booking status changed to: ${status}`,
+      message: `Booking is now: ${status.replace('_', ' ')}`,
       type: 'info',
     },
   });

@@ -18,7 +18,7 @@ export function useCurrentLocation() {
     []
   );
 
-  const useGps = useCallback(() => requestLiveLocation({ quiet: false, force: true }), []);
+  const requestGps = useCallback(() => requestLiveLocation({ quiet: false, force: true }), []);
 
   const status = isDetecting
     ? 'detecting'
@@ -36,7 +36,7 @@ export function useCurrentLocation() {
     status,
     error,
     refresh,
-    useGps,
+    requestGps,
     isDetecting,
     locationSource,
   };

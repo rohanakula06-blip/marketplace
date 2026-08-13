@@ -31,6 +31,7 @@ interface LoginFormProps {
   journey: 'customer' | 'worker';
   onSuccess: (user: Record<string, unknown>) => void;
   footer?: React.ReactNode;
+  theme?: 'light' | 'dark';
 }
 
 const ACCENT = {
@@ -41,6 +42,11 @@ const ACCENT = {
     ring: 'focus:ring-blue-500/30',
     badge: 'bg-blue-50 border-blue-100 text-blue-800',
     checkbox: 'text-blue-600 focus:ring-blue-500',
+    darkBtn: 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-900 hover:shadow-lg hover:shadow-amber-500/20',
+    darkTab: 'bg-amber-500/90 text-slate-900',
+    darkLink: 'text-amber-400',
+    darkRing: 'focus:ring-amber-500/30',
+    darkBadge: 'bg-amber-500/10 border-amber-500/30 text-amber-200',
   },
   professional: {
     btn: 'bg-teal-600 hover:bg-teal-700',
@@ -49,11 +55,17 @@ const ACCENT = {
     ring: 'focus:ring-teal-500/30',
     badge: 'bg-teal-50 border-teal-100 text-teal-800',
     checkbox: 'text-teal-600 focus:ring-teal-500',
+    darkBtn: 'bg-teal-500 text-white hover:bg-teal-400',
+    darkTab: 'bg-teal-500 text-white',
+    darkLink: 'text-teal-400',
+    darkRing: 'focus:ring-teal-500/30',
+    darkBadge: 'bg-teal-500/10 border-teal-500/30 text-teal-200',
   },
 };
 
-export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProps) {
+export function LoginForm({ variant, journey, onSuccess, footer, theme = 'light' }: LoginFormProps) {
   const accent = ACCENT[variant];
+  const isDark = theme === 'dark';
   const { showToast } = useUIStore();
   const { t } = useTranslation();
 
@@ -178,13 +190,25 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
   };
 
   const inputClass = cn(
-    'w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2',
-    accent.ring
+    'w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2',
+    isDark
+      ? 'border-white/15 bg-white/5 text-white placeholder:text-slate-500 ' + accent.darkRing
+      : 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 ' + accent.ring
   );
 
+  const btnClass = isDark ? accent.darkBtn : accent.btn + ' text-white';
+  const tabActiveClass = isDark ? accent.darkTab : accent.tab;
+  const linkClass = isDark ? accent.darkLink : accent.link;
+  const badgeClass = isDark ? accent.darkBadge : accent.badge;
+
   return (
-    <div className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 space-y-4">
-      <div className="flex gap-1 p-1 bg-slate-100 rounded-xl">
+    <div
+      className={cn(
+        'space-y-4',
+        !isDark && 'bg-white rounded-2xl shadow-md border border-slate-200 p-6'
+      )}
+    >
+      <div className={cn('flex gap-1 p-1 rounded-xl', isDark ? 'bg-white/5 border border-white/10' : 'bg-slate-100')}>
         {(
           [
             { id: 'password' as const, label: t('auth.passwordTab'), icon: KeyRound },
@@ -198,7 +222,11 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
             onClick={() => switchMethod(id)}
             className={cn(
               'flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-semibold transition-colors',
-              method === id ? accent.tab : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/80'
+              method === id
+                ? tabActiveClass
+                : isDark
+                  ? 'text-slate-400 hover:text-white hover:bg-white/10'
+                  : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/80'
             )}
           >
             <Icon size={14} className="hidden sm:block" />
@@ -210,7 +238,7 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
       {method === 'password' && (
         <form onSubmit={handlePasswordLogin} className="space-y-4">
           <div>
-            <label className="text-sm font-semibold text-slate-800">{t('auth.email')}</label>
+            <label className={cn('text-sm font-semibold', isDark ? 'text-slate-200' : 'text-slate-800')}>{t('auth.email')}</label>
             <input
               type="email"
               required
@@ -221,7 +249,7 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
             />
           </div>
           <div>
-            <label className="text-sm font-semibold text-slate-800">{t('auth.password')}</label>
+            <label className={cn('text-sm font-semibold', isDark ? 'text-slate-200' : 'text-slate-800')}>{t('auth.password')}</label>
             <div className="relative mt-1">
               <input
                 type={showPass ? 'text' : 'password'}
@@ -234,14 +262,14 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
               <button
                 type="button"
                 onClick={() => setShowPass(!showPass)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                className={cn('absolute right-3 top-1/2 -translate-y-1/2', isDark ? 'text-slate-500' : 'text-slate-400')}
               >
                 {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
           </div>
           <div className="flex items-center justify-between text-sm">
-            <label className="flex items-center gap-2 text-slate-800 cursor-pointer">
+            <label className={cn('flex items-center gap-2 cursor-pointer', isDark ? 'text-slate-300' : 'text-slate-800')}>
               <input
                 type="checkbox"
                 checked={rememberMe}
@@ -250,7 +278,7 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
               />
               {t('auth.rememberMe')}
             </label>
-            <Link href="/forgot-password" className={cn(accent.link, 'hover:underline')}>
+            <Link href="/forgot-password" className={cn(linkClass, 'hover:underline')}>
               {t('auth.forgotPassword')}
             </Link>
           </div>
@@ -258,8 +286,8 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
             type="submit"
             disabled={loading}
             className={cn(
-              'w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-60',
-              accent.btn
+              'w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold disabled:opacity-60',
+              btnClass
             )}
           >
             {loading && <Loader2 size={16} className="animate-spin" />}
@@ -305,8 +333,8 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
                 onClick={sendEmailOtp}
                 disabled={loading || !emailStatus?.configured}
                 className={cn(
-                  'w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-50',
-                  accent.btn
+                  'w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold disabled:opacity-50',
+                  btnClass
                 )}
               >
                 {loading ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
@@ -318,11 +346,11 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
               <button
                 type="button"
                 onClick={resetOtp}
-                className={cn('flex items-center gap-1 text-sm hover:underline', accent.link)}
+                className={cn('flex items-center gap-1 text-sm hover:underline', linkClass)}
               >
                 <ArrowLeft size={14} /> {email}
               </button>
-              <div className={cn('rounded-xl border p-3 text-sm', accent.badge)}>
+              <div className={cn('rounded-xl border p-3 text-sm', badgeClass)}>
                 Check your inbox (and spam) for the 6-digit code sent to <strong>{email}</strong>
               </div>
               <input
@@ -340,8 +368,8 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
                 onClick={verifyEmailOtp}
                 disabled={loading || otp.length !== 6}
                 className={cn(
-                  'w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-60',
-                  accent.btn
+                  'w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold disabled:opacity-60',
+                  btnClass
                 )}
               >
                 {loading && <Loader2 size={16} className="animate-spin" />}
@@ -351,7 +379,7 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
                 type="button"
                 onClick={sendEmailOtp}
                 disabled={countdown > 0 || loading}
-                className="w-full text-sm text-slate-700 disabled:opacity-50"
+                className={cn('w-full text-sm disabled:opacity-50', isDark ? 'text-slate-400' : 'text-slate-700')}
               >
                 {countdown > 0 ? t('auth.resendIn', { seconds: countdown }) : t('auth.resendCode')}
               </button>
@@ -386,7 +414,7 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
           {!otpSent ? (
             <>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm">+91</span>
+                <span className={cn('absolute left-4 top-1/2 -translate-y-1/2 text-sm', isDark ? 'text-slate-500' : 'text-slate-500')}>+91</span>
                 <input
                   type="tel"
                   placeholder={t('auth.enterMobile')}
@@ -401,8 +429,8 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
                 onClick={sendPhoneOtp}
                 disabled={loading || phone.length < 10 || !smsStatus?.configured}
                 className={cn(
-                  'w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-50',
-                  accent.btn
+                  'w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold disabled:opacity-50',
+                  btnClass
                 )}
               >
                 {loading ? <Loader2 size={16} className="animate-spin" /> : <Smartphone size={16} />}
@@ -414,7 +442,7 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
               <button
                 type="button"
                 onClick={resetOtp}
-                className={cn('flex items-center gap-1 text-sm hover:underline', accent.link)}
+                className={cn('flex items-center gap-1 text-sm hover:underline', linkClass)}
               >
                 <ArrowLeft size={14} /> +91 {phone}
               </button>
@@ -433,8 +461,8 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
                 onClick={verifyPhoneOtp}
                 disabled={loading || otp.length !== 6}
                 className={cn(
-                  'w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-60',
-                  accent.btn
+                  'w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold disabled:opacity-60',
+                  btnClass
                 )}
               >
                 {loading && <Loader2 size={16} className="animate-spin" />}
@@ -444,7 +472,7 @@ export function LoginForm({ variant, journey, onSuccess, footer }: LoginFormProp
                 type="button"
                 onClick={sendPhoneOtp}
                 disabled={countdown > 0 || loading}
-                className="w-full text-sm text-slate-700 disabled:opacity-50"
+                className={cn('w-full text-sm disabled:opacity-50', isDark ? 'text-slate-400' : 'text-slate-700')}
               >
                 {countdown > 0 ? t('auth.resendIn', { seconds: countdown }) : t('auth.resendOtp')}
               </button>

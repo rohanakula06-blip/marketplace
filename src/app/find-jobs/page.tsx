@@ -1,12 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { LocationControls } from '@/components/maps/LocationControls';
 import { useUIStore, useAuthStore } from '@/store/app-store';
 import { MapPin, Clock, Users } from 'lucide-react';
+import { resolveSearchCoords, bootstrapLocationFromProfile } from '@/lib/location-service';
+
+function markerOffset(id: string): { dLat: number; dLng: number } {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  const unit = (hash % 1000) / 1000;
+  const sign = hash % 2 === 0 ? 1 : -1;
+  return { dLat: sign * unit * 0.025, dLng: sign * (1 - unit) * 0.025 };
+}
 
 const LocationMapSection = dynamic(
   () => import('@/components/maps/LocationMapSection').then((m) => m.LocationMapSection),
@@ -41,11 +50,46 @@ export default function FindJobsPage() {
   }, [authReady, user, router]);
 
   useEffect(() => {
-    if (!locationReady) return;
-    fetch(`/api/jobs?status=open&lat=${coords.lat}&lng=${coords.lng}`)
-      .then((r) => r.json())
-      .then((d) => setJobs(d.jobs || []));
-  }, [coords, locationReady]);
+    if (!authReady || !user) return;
+
+    let cancelled = false;
+
+    async function loadJobs() {
+      let searchCoords = await resolveSearchCoords();
+      if (!searchCoords) {
+        await bootstrapLocationFromProfile();
+        searchCoords = await resolveSearchCoords();
+      }
+      if (!searchCoords) return;
+
+      const res = await fetch(
+        `/api/jobs?status=open&lat=${searchCoords.lat}&lng=${searchCoords.lng}`
+      );
+      const d = await res.json();
+      if (!cancelled) setJobs(d.jobs || []);
+    }
+
+    void loadJobs();
+    return () => {
+      cancelled = true;
+    };
+  }, [authReady, user, coords.lat, coords.lng, locationReady]);
+
+  const jobMarkers = useMemo(
+    () =>
+      jobs.map((j) => {
+        const offset = markerOffset(j.id);
+        return {
+          id: j.id,
+          lat: j.latitude ?? coords.lat + offset.dLat,
+          lng: j.longitude ?? coords.lng + offset.dLng,
+          title: j.title,
+          subtitle: `${j.budget} · ${j.distance} km`,
+          type: 'job' as const,
+        };
+      }),
+    [jobs, coords.lat, coords.lng]
+  );
 
   const apply = async (jobId: string) => {
     if (!user) {
@@ -65,15 +109,6 @@ export default function FindJobsPage() {
     if (res.ok) showToast('Application submitted!', 'success');
     else showToast('Failed to apply', 'error');
   };
-
-  const jobMarkers = jobs.map((j) => ({
-    id: j.id,
-    lat: j.latitude || coords.lat + (Math.random() - 0.5) * 0.05,
-    lng: j.longitude || coords.lng + (Math.random() - 0.5) * 0.05,
-    title: j.title,
-    subtitle: `${j.budget} · ${j.distance} km`,
-    type: 'job' as const,
-  }));
 
   if (!authReady || !user) return null;
 

@@ -10,12 +10,14 @@ export async function GET(req: NextRequest) {
   const category = searchParams.get('category');
   const search = searchParams.get('search');
   const sort = searchParams.get('sort') || 'best_match';
+  const includeOffline = searchParams.get('includeOffline') === 'true';
   const lat = parseFloat(searchParams.get('lat') || String(DEMO_COORDS.lat));
   const lng = parseFloat(searchParams.get('lng') || String(DEMO_COORDS.lng));
 
   const where: Record<string, unknown> = {
     verificationStatus: { in: ['verified', 'pending'] },
   };
+  if (!includeOffline) where.isAvailable = true;
   if (category) where.category = category;
 
   const profiles = await prisma.workerProfile.findMany({

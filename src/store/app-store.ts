@@ -58,6 +58,7 @@ interface UIState {
   workerProfileModal: string | null;
   jobModal: string | null;
   paymentModal: string | null;
+  reviewModal: { bookingId: string; workerId: string; workerName: string } | null;
   messageModal: { userId: string; bookingId?: string } | null;
   infoModal: 'contact' | 'safety' | 'help' | 'privacy' | 'terms' | 'ai' | 'features' | 'about' | 'messaging' | 'booking' | null;
   toast: { message: string; type: 'success' | 'error' | 'info' } | null;
@@ -78,6 +79,7 @@ interface UIState {
   setWorkerProfileModal: (id: string | null) => void;
   setJobModal: (id: string | null) => void;
   setPaymentModal: (id: string | null) => void;
+  setReviewModal: (data: UIState['reviewModal']) => void;
   setMessageModal: (data: UIState['messageModal']) => void;
   setInfoModal: (modal: UIState['infoModal']) => void;
   showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
@@ -103,6 +105,7 @@ export const useUIStore = create<UIState>()(
       workerProfileModal: null,
       jobModal: null,
       paymentModal: null,
+      reviewModal: null,
       messageModal: null,
       infoModal: null,
       toast: null,
@@ -124,6 +127,7 @@ export const useUIStore = create<UIState>()(
       setWorkerProfileModal: (workerProfileModal) => set({ workerProfileModal }),
       setJobModal: (jobModal) => set({ jobModal }),
       setPaymentModal: (paymentModal) => set({ paymentModal }),
+      setReviewModal: (reviewModal) => set({ reviewModal }),
       setMessageModal: (messageModal) => set({ messageModal }),
       setInfoModal: (infoModal) => set({ infoModal }),
       showToast: (message, type = 'info') => set({ toast: { message, type } }),

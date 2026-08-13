@@ -127,6 +127,11 @@ export const api = {
       request<{ jobs: Record<string, unknown>[] }>(`/api/jobs?mine=true&status=${status}`),
     create: (data: Record<string, unknown>) =>
       request<{ job: Record<string, unknown> }>('/api/jobs', { method: 'POST', body: JSON.stringify(data) }),
+    complete: (id: string) =>
+      request<{ job: Record<string, unknown> }>(`/api/jobs/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'completed' }),
+      }),
   },
 
   bookings: {
@@ -134,10 +139,18 @@ export const api = {
       request<{ bookings: Record<string, unknown>[] }>(`/api/bookings?role=${role}`),
     create: (data: Record<string, unknown>) =>
       request<{ booking: Record<string, unknown> }>('/api/bookings', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id: string, status: string) =>
-      request<{ booking: Record<string, unknown> }>('/api/bookings', {
+    update: (id: string, data: { status?: string; action?: string }) =>
+      request<{ booking: Record<string, unknown>; jobClosed?: boolean }>('/api/bookings', {
         method: 'PATCH',
-        body: JSON.stringify({ id, status }),
+        body: JSON.stringify({ id, ...data }),
+      }),
+  },
+
+  reviews: {
+    create: (data: { bookingId: string; workerId: string; rating: number; review: string }) =>
+      request<{ review: Record<string, unknown> }>('/api/reviews', {
+        method: 'POST',
+        body: JSON.stringify(data),
       }),
   },
 

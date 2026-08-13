@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LogIn } from 'lucide-react';
-import { AuthPageShell } from '@/components/auth/AuthPageShell';
+import { SignInShell } from '@/components/auth/SignInShell';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { useAuthStore, useUIStore } from '@/store/app-store';
 import { requestLiveLocation, resetLocationState, bootstrapLocationFromProfile } from '@/lib/location-service';
@@ -40,36 +40,37 @@ export default function CustomerLoginPage() {
   };
 
   return (
-    <AuthPageShell>
+    <SignInShell>
       <div className="text-center mb-6">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-600 mb-4 shadow-lg shadow-blue-600/40">
-          <LogIn size={28} className="text-white" />
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 mb-4 shadow-lg shadow-amber-500/25">
+          <LogIn size={28} className="text-slate-900" />
         </div>
         <h1 className="text-2xl font-bold text-white">{t('auth.signIn')}</h1>
-        <p className="text-slate-200 mt-2 text-sm">{t('auth.signInSubtitle')}</p>
+        <p className="text-slate-400 mt-2 text-sm">{t('auth.signInSubtitle')}</p>
       </div>
 
       <LoginForm
         variant="customer"
         journey="customer"
+        theme="dark"
         onSuccess={handleSuccess}
         footer={
           <>
-            <p className="text-center text-sm text-slate-700 pt-2">
+            <p className="text-center text-sm text-slate-400 pt-2">
               {t('auth.newHere')}{' '}
-              <Link href="/register" className="text-blue-700 font-semibold hover:underline">
+              <Link href="/register" className="text-amber-400 font-semibold hover:underline">
                 {t('auth.createAccount')}
               </Link>
             </p>
-            <p className="text-center text-xs text-slate-600">
+            <p className="text-center text-xs text-slate-500">
               {t('auth.professional')}{' '}
-              <Link href="/login/professional" className="text-teal-700 font-semibold hover:underline">
+              <Link href="/login/professional" className="text-teal-400 font-semibold hover:underline">
                 {t('auth.proSignIn')}
               </Link>
             </p>
           </>
         }
       />
-    </AuthPageShell>
+    </SignInShell>
   );
 }

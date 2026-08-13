@@ -17,6 +17,17 @@
 @theme inline {
   --color-royal: var(--royal);
   --color-teal: var(--teal);
+  --color-teak-50: #F7F5EF;
+  --color-teak-100: #ECE6D5;
+  --color-teak-200: #DACCAE;
+  --color-teak-300: #C5AC7F;
+  --color-teak-400: #BA9A69;
+  --color-teak-500: #A57E4D;
+  --color-teak-600: #8D6641;
+  --color-teak-700: #724E36;
+  --color-teak-800: #604233;
+  --color-teak-900: #54392F;
+  --color-teak-950: #301E18;
   --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
 }
 
@@ -162,6 +173,61 @@ body {
   );
 }
 
+.hero-overlay-night-subtle {
+  background: linear-gradient(
+    105deg,
+    rgba(6, 9, 18, 0.45) 0%,
+    rgba(6, 9, 18, 0.18) 35%,
+    transparent 62%
+  );
+}
+
+.hero-overlay-clear {
+  background: linear-gradient(
+    105deg,
+    rgba(8, 12, 24, 0.5) 0%,
+    rgba(8, 12, 24, 0.15) 35%,
+    transparent 58%
+  );
+}
+
+.hero-scene-vignette {
+  background: radial-gradient(
+    ellipse 100% 70% at 50% 50%,
+    transparent 55%,
+    rgba(6, 9, 18, 0.12) 100%
+  );
+}
+
+/* Glassmorphism — lets the map background show through */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.glass-nav {
+  background: rgba(8, 12, 24, 0.45);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
 .hero-bg-scene {
   background-repeat: no-repeat;
   background-size: 100% auto;
@@ -195,6 +261,44 @@ body {
     rgba(245, 158, 11, 0.1) 0%,
     transparent 60%
   );
+}
+
+.hero-dark-ambient {
+  background:
+    radial-gradient(ellipse 70% 50% at 75% 35%, rgba(245, 158, 11, 0.05) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 15% 70%, rgba(37, 99, 235, 0.04) 0%, transparent 50%);
+}
+
+/* Landing page — Teak palette */
+.hero-overlay-teak {
+  background: linear-gradient(
+    105deg,
+    rgba(247, 245, 239, 0.96) 0%,
+    rgba(247, 245, 239, 0.88) 30%,
+    rgba(236, 230, 213, 0.55) 52%,
+    rgba(236, 230, 213, 0.2) 72%,
+    transparent 88%
+  );
+}
+
+.hero-teak-glow {
+  background: radial-gradient(
+    ellipse 55% 45% at 72% 48%,
+    rgba(186, 154, 105, 0.18) 0%,
+    transparent 65%
+  );
+}
+
+.landing-card {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(186, 154, 105, 0.25);
+  box-shadow: 0 4px 24px rgba(48, 30, 24, 0.06);
+}
+
+.landing-card:hover {
+  border-color: rgba(165, 126, 77, 0.4);
+  box-shadow: 0 8px 32px rgba(48, 30, 24, 0.1);
 }
 
 .auth-bg-scene {

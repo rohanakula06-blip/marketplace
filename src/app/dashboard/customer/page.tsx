@@ -3,19 +3,32 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Navbar } from '@/components/layout/Navbar';
+import {
+  AccountPageShell,
+  AccountCard,
+  accountInputClass,
+  DashboardHero,
+  DashboardSection,
+  StatTile,
+} from '@/components/account/AccountPageShell';
 import { useAuthStore, useUIStore } from '@/store/app-store';
-import { Star, MapPin, Plus, Bell, Loader2, Briefcase, Navigation } from 'lucide-react';
+import { Star, MapPin, Plus, Bell, Loader2, Briefcase, Search, Calendar, Users } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
 import { useDashboardLocation } from '@/hooks/useDashboardLocation';
 import { resolveSearchCoords } from '@/lib/location-service';
+import {
+  TIME_SLOTS,
+  minBookingDate,
+  defaultBookingDate,
+  defaultBookingTime,
+} from '@/lib/booking-utils';
 
 export default function CustomerDashboard() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const authReady = useAuthStore((s) => s.authReady);
   const { setWorkerProfileModal, setBookingModal, showToast } = useUIStore();
-  const { coords, location, locationReady, syncing, initialized, syncCurrentLocation } = useDashboardLocation();
+  const { coords, location, locationReady, initialized, syncCurrentLocation } = useDashboardLocation();
   const [workers, setWorkers] = useState<Record<string, unknown>[]>([]);
   const [bookings, setBookings] = useState<Record<string, unknown>[]>([]);
   const [myJobs, setMyJobs] = useState<Record<string, unknown>[]>([]);
@@ -27,8 +40,8 @@ export default function CustomerDashboard() {
     category: 'plumber',
     description: 'Describe the issue you need fixed',
     budget: '₹500–₹800',
-    date: '2026-08-15',
-    time: '10:00 AM',
+    date: defaultBookingDate(),
+    time: defaultBookingTime(),
     urgency: 'normal',
   });
 
@@ -46,26 +59,14 @@ export default function CustomerDashboard() {
 
     const [workersRes, bookingsRes, jobsRes, notifRes] = results;
 
-    if (workersRes.status === 'fulfilled') {
-      setWorkers(workersRes.value.workers || []);
-    } else {
-      showToast('Could not load nearby workers', 'error');
-    }
+    if (workersRes.status === 'fulfilled') setWorkers(workersRes.value.workers || []);
+    else showToast('Could not load nearby workers', 'error');
 
-    if (bookingsRes.status === 'fulfilled') {
-      setBookings(bookingsRes.value.bookings || []);
-    }
+    if (bookingsRes.status === 'fulfilled') setBookings(bookingsRes.value.bookings || []);
+    if (jobsRes.status === 'fulfilled') setMyJobs(jobsRes.value.jobs || []);
+    if (notifRes.status === 'fulfilled') setNotifications(notifRes.value.notifications || []);
 
-    if (jobsRes.status === 'fulfilled') {
-      setMyJobs(jobsRes.value.jobs || []);
-    }
-
-    if (notifRes.status === 'fulfilled') {
-      setNotifications(notifRes.value.notifications || []);
-    }
-
-    const failed = results.filter((r) => r.status === 'rejected').length;
-    if (failed === results.length) {
+    if (results.every((r) => r.status === 'rejected')) {
       showToast('Failed to load dashboard data', 'error');
     }
   }, [user, initialized, coords.lat, coords.lng, locationReady, showToast]);
@@ -112,66 +113,85 @@ export default function CustomerDashboard() {
     }
   };
 
-  if (!authReady) {
-    return (
-      <div className="min-h-screen section-dark bg-[#0a0f1e] flex items-center justify-center">
-        <Loader2 size={32} className="animate-spin text-blue-400" />
-      </div>
-    );
-  }
+  const activeBookings = bookings.filter(
+    (b) => !['reviewed', 'cancelled'].includes(String(b.status))
+  );
 
+  if (!authReady) return <AccountPageShell variant="customer" loading />;
   if (!user) return null;
 
   return (
-    <div className="min-h-screen section-dark bg-[#0a0f1e]">
-      <Navbar />
-      <div className="pt-24 pb-12 mx-auto max-w-7xl px-4">
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Customer Dashboard</h1>
-            <p className="text-slate-300">Welcome, {user.name}</p>
-            {locationReady && (
-              <button
-                type="button"
-                onClick={() => syncCurrentLocation(true).then(() => loadData())}
-                className="mt-2 inline-flex items-center gap-1.5 text-xs text-blue-300 hover:text-blue-200"
-              >
-                <MapPin size={12} />
-                {location}
-                <Navigation size={11} className="opacity-70" aria-label="Refresh location" />
-              </button>
-            )}
-          </div>
-          <div className="flex gap-3">
-            <Link href="/" className="glass px-4 py-2 rounded-xl text-sm text-slate-800 hover:bg-slate-100">
-              ← Home
+    <AccountPageShell variant="customer">
+      <DashboardHero
+        variant="customer"
+        name={user.name.split(' ')[0]}
+        subtitle="Find and book trusted local professionals"
+        badge="User Account"
+        avatar={user.name.charAt(0)}
+        location={locationReady ? location : undefined}
+        onRefreshLocation={locationReady ? () => syncCurrentLocation(true).then(() => loadData()) : undefined}
+        actions={
+          <>
+            <Link
+              href="/find-workers"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-500 to-orange-500 text-slate-900 shadow-lg shadow-amber-500/20 hover:shadow-amber-500/35 transition-shadow"
+            >
+              <Search size={16} /> Find Professionals
+            </Link>
+            <Link
+              href="/bookings"
+              className="px-5 py-2.5 rounded-xl text-sm font-medium border border-white/15 text-white bg-white/5 hover:bg-white/10"
+            >
+              My Bookings
             </Link>
             <button
+              type="button"
               onClick={() => setShowJobForm((v) => !v)}
-              className="btn-primary flex items-center gap-2 text-sm"
+              className="px-5 py-2.5 rounded-xl text-sm font-medium border border-amber-400/30 text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 flex items-center gap-2"
             >
-              <Plus size={16} /> Post Job
+              <Plus size={16} /> {showJobForm ? 'Cancel' : 'Post a Job'}
             </button>
-          </div>
-        </div>
+          </>
+        }
+        banner={
+          notifications.length > 0 ? (
+            <AccountCard className="px-4 py-3 flex items-center gap-2">
+              <Bell size={18} className="text-amber-400 shrink-0" />
+              <span className="text-sm text-slate-200">
+                {String(notifications[0].title)}: {String(notifications[0].message)}
+              </span>
+            </AccountCard>
+          ) : undefined
+        }
+      />
 
-        {showJobForm && (
-          <form onSubmit={postJob} className="glass rounded-2xl p-6 mb-8 space-y-4">
-            <h3 className="font-semibold text-slate-900 text-lg">Post a New Job</h3>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-10">
+        <StatTile icon={Users} label="Nearby pros" value={workers.length} accent="amber" />
+        <StatTile icon={Calendar} label="Active bookings" value={activeBookings.length} accent="blue" />
+        <StatTile icon={Briefcase} label="Posted jobs" value={myJobs.length} accent="teal" />
+        <StatTile icon={Bell} label="Notifications" value={notifications.length} accent="yellow" />
+      </div>
+
+      {showJobForm && (
+        <AccountCard className="p-6 mb-10">
+          <form onSubmit={postJob} className="space-y-4">
+            <h3 className="font-semibold text-white text-lg">Post a New Job</h3>
             <input
               required
               value={jobForm.title}
               onChange={(e) => setJobForm({ ...jobForm, title: e.target.value })}
               placeholder="Job title"
-              className="w-full input-light rounded-xl px-4 py-3 text-sm"
+              className={accountInputClass}
             />
             <select
               value={jobForm.category}
               onChange={(e) => setJobForm({ ...jobForm, category: e.target.value })}
-              className="w-full input-light rounded-xl px-4 py-3 text-sm"
+              className={accountInputClass}
             >
               {['plumber', 'electrician', 'cleaning', 'carpenter', 'tutor'].map((c) => (
-                <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                <option key={c} value={c} className="bg-slate-900">
+                  {c.charAt(0).toUpperCase() + c.slice(1)}
+                </option>
               ))}
             </select>
             <textarea
@@ -179,7 +199,7 @@ export default function CustomerDashboard() {
               value={jobForm.description}
               onChange={(e) => setJobForm({ ...jobForm, description: e.target.value })}
               placeholder="Describe the work needed"
-              className="w-full input-light rounded-xl px-4 py-3 text-sm min-h-[80px]"
+              className={`${accountInputClass} min-h-[80px]`}
             />
             <div className="grid sm:grid-cols-2 gap-4">
               <input
@@ -187,125 +207,158 @@ export default function CustomerDashboard() {
                 value={jobForm.budget}
                 onChange={(e) => setJobForm({ ...jobForm, budget: e.target.value })}
                 placeholder="Budget e.g. ₹500–₹800"
-                className="input-light rounded-xl px-4 py-3 text-sm"
+                className={accountInputClass}
               />
               <select
                 value={jobForm.urgency}
                 onChange={(e) => setJobForm({ ...jobForm, urgency: e.target.value })}
-                className="input-light rounded-xl px-4 py-3 text-sm"
+                className={accountInputClass}
               >
-                <option value="normal">Normal</option>
-                <option value="same-day">Same Day</option>
-                <option value="emergency">Emergency</option>
+                <option value="normal" className="bg-slate-900">Normal</option>
+                <option value="same-day" className="bg-slate-900">Same Day</option>
+                <option value="emergency" className="bg-slate-900">Emergency</option>
               </select>
               <input
                 required
                 type="date"
+                min={minBookingDate()}
                 value={jobForm.date}
                 onChange={(e) => setJobForm({ ...jobForm, date: e.target.value })}
-                className="input-light rounded-xl px-4 py-3 text-sm"
+                className={accountInputClass}
               />
-              <input
+              <select
                 required
                 value={jobForm.time}
                 onChange={(e) => setJobForm({ ...jobForm, time: e.target.value })}
-                placeholder="Time e.g. 10:00 AM"
-                className="input-light rounded-xl px-4 py-3 text-sm"
-              />
+                className={accountInputClass}
+              >
+                {TIME_SLOTS.map((t) => (
+                  <option key={t} value={t} className="bg-slate-900">{t}</option>
+                ))}
+              </select>
             </div>
-            <button type="submit" disabled={posting} className="btn-primary flex items-center gap-2">
+            <button
+              type="submit"
+              disabled={posting}
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-3 text-sm font-semibold text-slate-900 disabled:opacity-60"
+            >
               {posting && <Loader2 size={16} className="animate-spin" />}
               Publish Job
             </button>
           </form>
-        )}
+        </AccountCard>
+      )}
 
-        {notifications.length > 0 && (
-          <div className="glass rounded-xl p-4 mb-6 flex items-center gap-2">
-            <Bell size={18} className="text-amber-500 shrink-0" />
-            <span className="text-sm text-slate-800">
-              {String(notifications[0].title)}: {String(notifications[0].message)}
-            </span>
+      {myJobs.length > 0 && (
+        <DashboardSection title="My Posted Jobs" icon={Briefcase} accent="amber">
+          <div className="grid gap-3 md:grid-cols-2">
+            {myJobs.map((job) => (
+              <AccountCard key={String(job.id)} hover className="p-4">
+                <p className="font-semibold text-white">{String(job.title)}</p>
+                <p className="text-sm text-slate-400 capitalize">{String(job.category)} · {String(job.status)}</p>
+                <p className="text-xs text-slate-500 mt-1">{String(job.date)} · {String(job.time)} · {String(job.budget)}</p>
+                {String(job.status) === 'open' && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await api.jobs.complete(String(job.id));
+                        showToast('Job closed — no longer visible to professionals', 'success');
+                        loadData();
+                      } catch {
+                        showToast('Failed to close job', 'error');
+                      }
+                    }}
+                    className="mt-3 text-xs px-3 py-1.5 rounded-lg border border-white/15 text-slate-300 hover:bg-white/10"
+                  >
+                    Mark as completed
+                  </button>
+                )}
+              </AccountCard>
+            ))}
           </div>
-        )}
+        </DashboardSection>
+      )}
 
-        {myJobs.length > 0 && (
-          <div className="mb-8">
-            <h2 className="font-semibold mb-4 text-white flex items-center gap-2">
-              <Briefcase size={18} /> My Posted Jobs ({myJobs.length})
-            </h2>
-            <div className="grid gap-3 md:grid-cols-2">
-              {myJobs.map((job) => (
-                <div key={String(job.id)} className="glass rounded-xl p-4">
-                  <p className="font-semibold text-slate-900">{String(job.title)}</p>
-                  <p className="text-sm text-slate-600 capitalize">{String(job.category)} · {String(job.status)}</p>
-                  <p className="text-xs text-slate-500 mt-1">{String(job.date)} · {String(job.budget)}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <h2 className="font-semibold mb-4 text-white">Nearby Workers</h2>
+      <div className="grid gap-8 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <DashboardSection
+            title="Nearby Professionals"
+            icon={Users}
+            accent="amber"
+            action={
+              <Link href="/find-workers" className="text-sm text-amber-400 hover:text-amber-300 font-medium">
+                View all →
+              </Link>
+            }
+          >
             {workers.length === 0 ? (
-              <div className="glass rounded-xl p-8 text-center text-slate-600 text-sm">
+              <AccountCard className="p-8 text-center text-slate-400 text-sm">
                 {locationReady
                   ? 'No professionals registered near your location yet.'
                   : 'Detecting your location… nearby professionals will appear shortly.'}
+              </AccountCard>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                {workers.slice(0, 4).map((w) => (
+                  <AccountCard key={String(w.id)} hover className="p-5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h4 className="font-semibold text-white">{String(w.name)}</h4>
+                        <p className="text-sm text-slate-400 capitalize">{String(w.category)}</p>
+                      </div>
+                      <div className="flex items-center gap-1 rounded-lg bg-amber-500/10 px-2 py-1">
+                        <Star size={12} className="text-amber-400 fill-amber-400" />
+                        <span className="text-xs text-amber-200 font-medium">{String(w.rating)}</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-500 flex items-center gap-1 mt-2">
+                      <MapPin size={12} />{String(w.distance)} km away
+                    </p>
+                    <div className="flex gap-2 mt-4">
+                      <button
+                        type="button"
+                        onClick={() => setWorkerProfileModal(String(w.id))}
+                        className="flex-1 text-xs py-2 rounded-lg border border-white/15 text-slate-200 hover:bg-white/10"
+                      >
+                        Profile
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBookingModal(true, String(w.id))}
+                        className="flex-1 text-xs py-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-slate-900 font-semibold"
+                      >
+                        Book
+                      </button>
+                    </div>
+                  </AccountCard>
+                ))}
               </div>
-            ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {workers.slice(0, 4).map((w) => (
-                <div key={String(w.id)} className="glass rounded-xl p-5">
-                  <h4 className="font-semibold text-slate-900">{String(w.name)}</h4>
-                  <p className="text-sm text-slate-600 capitalize">{String(w.category)}</p>
-                  <div className="flex items-center gap-1 my-2">
-                    <Star size={14} className="text-amber-500 fill-amber-500" />
-                    <span className="text-sm text-slate-800">{String(w.rating)}</span>
-                  </div>
-                  <p className="text-xs text-slate-500 flex items-center gap-1">
-                    <MapPin size={12} />{String(w.distance)} km
-                  </p>
-                  <div className="flex gap-2 mt-3">
-                    <button
-                      onClick={() => setWorkerProfileModal(String(w.id))}
-                      className="flex-1 text-xs py-2 glass rounded-lg text-slate-800 hover:bg-slate-100"
-                    >
-                      Profile
-                    </button>
-                    <button
-                      onClick={() => setBookingModal(true, String(w.id))}
-                      className="flex-1 text-xs py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                    >
-                      Book
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
             )}
-          </div>
-          <div>
-            <h2 className="font-semibold mb-4 text-white">Active Bookings</h2>
+          </DashboardSection>
+        </div>
+
+        <div>
+          <DashboardSection title="Active Bookings" icon={Calendar} accent="amber">
             {bookings.length === 0 ? (
-              <div className="glass rounded-xl p-6 text-center text-slate-600 text-sm">No active bookings</div>
+              <AccountCard className="p-6 text-center text-slate-400 text-sm">No active bookings</AccountCard>
             ) : (
-              bookings.map((b) => (
-                <div key={String(b.id)} className="glass rounded-xl p-4 mb-3">
-                  <p className="font-medium capitalize text-slate-900">{String(b.service)}</p>
-                  <p className="text-xs text-slate-600">{String(b.date)} · {String(b.status)}</p>
-                  <p className="text-sm text-amber-600 mt-1 font-semibold">{String(b.price)}</p>
-                </div>
-              ))
+              <div className="space-y-3">
+                {bookings.slice(0, 5).map((b) => (
+                  <AccountCard key={String(b.id)} className="p-4">
+                    <p className="font-medium capitalize text-white">{String(b.service)}</p>
+                    <p className="text-xs text-slate-400">{String(b.date)} · {String(b.status)}</p>
+                    <p className="text-sm text-amber-400 mt-1 font-semibold">{String(b.price)}</p>
+                  </AccountCard>
+                ))}
+              </div>
             )}
-            <Link href="/bookings" className="block text-center text-sm text-blue-400 hover:text-blue-300 mt-4">
+            <Link href="/bookings" className="block text-center text-sm text-amber-400 hover:text-amber-300 mt-4 font-medium">
               View all bookings →
             </Link>
-          </div>
+          </DashboardSection>
         </div>
       </div>
-    </div>
+    </AccountPageShell>
   );
 }

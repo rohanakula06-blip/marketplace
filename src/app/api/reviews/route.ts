@@ -21,5 +21,13 @@ export async function POST(req: NextRequest) {
 
   await prisma.booking.update({ where: { id: bookingId }, data: { status: 'reviewed' } });
 
+  const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
+  if (booking?.jobId) {
+    await prisma.job.updateMany({
+      where: { id: booking.jobId },
+      data: { status: 'completed' },
+    });
+  }
+
   return NextResponse.json({ review: reviewRecord }, { status: 201 });
 }

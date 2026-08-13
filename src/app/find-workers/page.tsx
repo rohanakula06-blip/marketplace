@@ -197,6 +197,9 @@ export default function FindWorkersPage() {
                           {w.verificationStatus === 'verified' && (
                             <Shield size={14} className="text-teal-500 shrink-0" />
                           )}
+                          {w.isAvailable && (
+                            <span className="text-[10px] font-medium text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full shrink-0">Online</span>
+                          )}
                         </div>
                         <p className="text-sm text-slate-500 capitalize">{w.category}</p>
                         <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">

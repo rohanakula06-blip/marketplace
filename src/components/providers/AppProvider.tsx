@@ -10,6 +10,7 @@ import { BookingModal } from '@/components/modals/BookingModal';
 import { PaymentModal } from '@/components/modals/PaymentModal';
 import { WorkerProfileModal } from '@/components/modals/WorkerProfileModal';
 import { MessageModal } from '@/components/modals/MessageModal';
+import { ReviewModal } from '@/components/modals/ReviewModal';
 import { InfoModal } from '@/components/modals/InfoModal';
 import { Wifi, WifiOff } from 'lucide-react';
 
@@ -100,6 +101,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       <PaymentModal />
       <WorkerProfileModal />
       <MessageModal />
+      <ReviewModal />
       <InfoModal />
     </>
   );
