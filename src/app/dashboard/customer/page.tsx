@@ -8,6 +8,7 @@ import { useAuthStore, useUIStore } from '@/store/app-store';
 import { Star, MapPin, Plus, Bell, Loader2, Briefcase, Navigation } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
 import { useDashboardLocation } from '@/hooks/useDashboardLocation';
+import { resolveSearchCoords } from '@/lib/location-service';
 
 export default function CustomerDashboard() {
   const router = useRouter();
@@ -34,8 +35,10 @@ export default function CustomerDashboard() {
   const loadData = useCallback(async () => {
     if (!user || !initialized) return;
 
+    const searchCoords = (await resolveSearchCoords()) ?? coords;
+
     const results = await Promise.allSettled([
-      api.workers.list({ lat: coords.lat, lng: coords.lng, sort: 'best_match' }),
+      api.workers.list({ lat: searchCoords.lat, lng: searchCoords.lng, sort: 'best_match' }),
       api.bookings.list('customer'),
       api.jobs.mine('all'),
       api.notifications.list(),
@@ -65,7 +68,7 @@ export default function CustomerDashboard() {
     if (failed === results.length) {
       showToast('Failed to load dashboard data', 'error');
     }
-  }, [user, initialized, coords.lat, coords.lng, showToast]);
+  }, [user, initialized, coords.lat, coords.lng, locationReady, showToast]);
 
   useEffect(() => {
     if (!authReady) return;
@@ -246,6 +249,13 @@ export default function CustomerDashboard() {
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <h2 className="font-semibold mb-4 text-white">Nearby Workers</h2>
+            {workers.length === 0 ? (
+              <div className="glass rounded-xl p-8 text-center text-slate-600 text-sm">
+                {locationReady
+                  ? 'No professionals registered near your location yet.'
+                  : 'Detecting your location… nearby professionals will appear shortly.'}
+              </div>
+            ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {workers.slice(0, 4).map((w) => (
                 <div key={String(w.id)} className="glass rounded-xl p-5">
@@ -275,6 +285,7 @@ export default function CustomerDashboard() {
                 </div>
               ))}
             </div>
+            )}
           </div>
           <div>
             <h2 className="font-semibold mb-4 text-white">Active Bookings</h2>

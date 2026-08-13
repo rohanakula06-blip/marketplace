@@ -10,6 +10,55 @@ let inflight: Promise<GeoLocation | null> | null = null;
 let inflightGeneration = 0;
 let stopRefine: (() => void) | null = null;
 
+function hasValidCoords(lat: number, lng: number): boolean {
+  return Number.isFinite(lat) && Number.isFinite(lng) && !(lat === 0 && lng === 0);
+}
+
+/** Use saved profile coordinates when GPS is unavailable (common on desktop). */
+export async function bootstrapLocationFromProfile(): Promise<boolean> {
+  const user = useAuthStore.getState().user;
+  if (!user) return false;
+
+  const store = useUIStore.getState();
+  if (store.locationReady && hasValidCoords(store.coords.lat, store.coords.lng)) {
+    return true;
+  }
+
+  try {
+    const saved = await api.location.get();
+    if (!hasValidCoords(saved.latitude, saved.longitude)) return false;
+
+    store.setCoords(
+      saved.latitude,
+      saved.longitude,
+      saved.location || undefined,
+      null,
+      'search'
+    );
+    store.setLocationError(null);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Resolve coordinates for worker search — GPS, saved profile, or null. */
+export async function resolveSearchCoords(): Promise<{ lat: number; lng: number } | null> {
+  const store = useUIStore.getState();
+  if (store.locationReady && hasValidCoords(store.coords.lat, store.coords.lng)) {
+    return store.coords;
+  }
+
+  if (await bootstrapLocationFromProfile()) {
+    const next = useUIStore.getState();
+    if (hasValidCoords(next.coords.lat, next.coords.lng)) {
+      return next.coords;
+    }
+  }
+
+  return null;
+}
+
 export function resetLocationState() {
   stopRefine?.();
   stopRefine = null;
@@ -85,6 +134,18 @@ export async function requestLiveLocation(options?: {
       return resolved;
     } catch (err) {
       if (generation !== inflightGeneration) return null;
+
+      const saved = await bootstrapLocationFromProfile();
+      if (saved && generation === inflightGeneration) {
+        const label = useUIStore.getState().location;
+        const coords = useUIStore.getState().coords;
+        store.setLocationDetecting(false);
+        if (!quiet) {
+          store.showToast(`Using saved location: ${label}`, 'info');
+        }
+        return { lat: coords.lat, lng: coords.lng, label };
+      }
+
       const msg = err instanceof Error ? err.message : 'Unable to get your location';
       store.setLocationError(msg);
       if (!quiet) {

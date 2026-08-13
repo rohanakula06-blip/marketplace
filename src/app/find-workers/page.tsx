@@ -9,6 +9,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { LocationControls } from '@/components/maps/LocationControls';
 import { useUIStore, useAuthStore } from '@/store/app-store';
 import { api } from '@/lib/api';
+import { resolveSearchCoords, bootstrapLocationFromProfile } from '@/lib/location-service';
 import type { MapMarker } from '@/components/maps/MapView';
 
 const LocationMapSection = dynamic(
@@ -49,14 +50,54 @@ export default function FindWorkersPage() {
   }, [authReady, user, router]);
 
   useEffect(() => {
-    if (!locationReady) return;
-    setLoading(true);
-    api.workers
-      .list({ lat: coords.lat, lng: coords.lng, category: category || undefined, sort: 'nearest' })
-      .then((d) => setWorkers(d.workers as unknown as Worker[]))
-      .catch(() => setWorkers([]))
-      .finally(() => setLoading(false));
-  }, [coords, category, locationReady]);
+    if (!authReady || !user) return;
+
+    let cancelled = false;
+
+    async function loadWorkers() {
+      setLoading(true);
+
+      let searchCoords = await resolveSearchCoords();
+      if (!searchCoords) {
+        await bootstrapLocationFromProfile();
+        searchCoords = await resolveSearchCoords();
+      }
+
+      if (!searchCoords) {
+        // Give GPS a short window before showing an empty state
+        await new Promise((r) => setTimeout(r, 2500));
+        if (cancelled) return;
+        searchCoords = await resolveSearchCoords();
+      }
+
+      if (!searchCoords) {
+        if (!cancelled) {
+          setWorkers([]);
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const d = await api.workers.list({
+          lat: searchCoords.lat,
+          lng: searchCoords.lng,
+          category: category || undefined,
+          sort: 'nearest',
+        });
+        if (!cancelled) setWorkers(d.workers as unknown as Worker[]);
+      } catch {
+        if (!cancelled) setWorkers([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void loadWorkers();
+    return () => {
+      cancelled = true;
+    };
+  }, [authReady, user, coords.lat, coords.lng, category, locationReady]);
 
   const mapMarkers: MapMarker[] = workers.slice(0, 15).map((w) => ({
     id: w.id,
@@ -78,13 +119,23 @@ export default function FindWorkersPage() {
           <p className="text-slate-500 mt-1">Map centers on your GPS location automatically</p>
         </div>
 
-        {workers.length === 0 && !loading && locationReady && (
+        {workers.length === 0 && !loading && (
           <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50 px-5 py-4 text-sm text-blue-900">
-            No professionals registered near you yet.{' '}
-            <Link href="/register/worker" className="font-semibold underline">
-              Join as a professional
-            </Link>{' '}
-            to be the first in your area.
+            {locationReady
+              ? (
+                  <>
+                    No professionals registered near you yet.{' '}
+                    <Link href="/register/worker" className="font-semibold underline">
+                      Join as a professional
+                    </Link>{' '}
+                    to be the first in your area.
+                  </>
+                )
+              : (
+                  <>
+                    Set your location using GPS or city search above to find nearby professionals.
+                  </>
+                )}
           </div>
         )}
 

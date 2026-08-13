@@ -13,8 +13,8 @@ export function HeroSection() {
   const { t } = useTranslation();
   const findWorkersHref = user
     ? user.workerProfile
-      ? '/find-workers'
-      : '/dashboard/customer'
+      ? '/dashboard/worker'
+      : '/find-workers'
     : '/register';
 
   const trustItems = [

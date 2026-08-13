@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore, useUIStore } from '@/store/app-store';
 import { api } from '@/lib/api';
-import { requestLiveLocation, resetLocationState } from '@/lib/location-service';
+import { requestLiveLocation, resetLocationState, bootstrapLocationFromProfile } from '@/lib/location-service';
 import { Toast } from '@/components/ui/Toast';
 import { AuthModals } from '@/components/modals/AuthModals';
 import { BookingModal } from '@/components/modals/BookingModal';
@@ -55,13 +55,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             ? ({ ...(sessionUser as object), location: null } as Parameters<typeof setUser>[0])
             : null
         );
+        if (sessionUser) {
+          await bootstrapLocationFromProfile();
+        }
       } catch {
         setUser(null);
       } finally {
         setAuthReady(true);
       }
 
-      requestLiveLocation({ quiet: true, force: true });
+      requestLiveLocation({ quiet: true, force: false });
     }
 
     bootstrap();

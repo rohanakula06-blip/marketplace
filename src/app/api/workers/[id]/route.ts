@@ -60,23 +60,38 @@ export async function POST(req: NextRequest) {
       skills: Array.isArray(body.skills) ? body.skills.join(', ') : body.skills,
       experience: parseInt(body.experience) || 0,
       pricing: body.pricing,
-      availability: body.availability || 'weekdays',
+      availability: body.availability || 'available',
       bio: body.bio,
       serviceAreas: body.serviceAreas,
       travelRadius: parseFloat(body.travelRadius) || 10,
       languages: Array.isArray(body.languages) ? body.languages.join(', ') : body.languages || 'English',
       profilePhoto: body.profilePhoto,
       verificationStatus: 'verified',
+      isAvailable: true,
     },
   });
+
+  const lat = body.latitude != null ? Number(body.latitude) : user.latitude;
+  const lng = body.longitude != null ? Number(body.longitude) : user.longitude;
+  const locationLabel =
+    typeof body.location === 'string' && body.location.trim()
+      ? body.location.trim()
+      : user.location;
+
+  if (lat == null || lng == null || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return NextResponse.json(
+      { error: 'Service location is required. Set GPS or search your area first.' },
+      { status: 400 }
+    );
+  }
 
   await prisma.user.update({
     where: { id: user.id },
     data: {
       role: 'worker',
-      ...(body.latitude != null && { latitude: Number(body.latitude) }),
-      ...(body.longitude != null && { longitude: Number(body.longitude) }),
-      ...(body.location && { location: body.location }),
+      latitude: lat,
+      longitude: lng,
+      ...(locationLabel && { location: locationLabel }),
     },
   });
 

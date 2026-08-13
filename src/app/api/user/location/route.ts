@@ -28,10 +28,6 @@ export async function PATCH(req: NextRequest) {
 
   const { location, latitude, longitude } = await req.json();
 
-  const nextLocation = location ?? user.location;
-  const nextLat = latitude !== undefined ? latitude : user.latitude;
-  const nextLng = longitude !== undefined ? longitude : user.longitude;
-
   try {
     const updated = await prisma.user.update({
       where: { id: user.id },
@@ -49,14 +45,9 @@ export async function PATCH(req: NextRequest) {
       latitude: updated.latitude,
       longitude: updated.longitude,
     });
-  } catch {
-    await refreshAuthCookie(user, nextLocation, nextLat, nextLng);
-
-    return NextResponse.json({
-      location: nextLocation,
-      latitude: nextLat,
-      longitude: nextLng,
-    });
+  } catch (error) {
+    console.error('[User location PATCH]', error);
+    return NextResponse.json({ error: 'Failed to save location' }, { status: 500 });
   }
 }
 

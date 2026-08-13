@@ -7,7 +7,7 @@ import { LogIn } from 'lucide-react';
 import { AuthPageShell } from '@/components/auth/AuthPageShell';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { useAuthStore, useUIStore } from '@/store/app-store';
-import { requestLiveLocation, resetLocationState } from '@/lib/location-service';
+import { requestLiveLocation, resetLocationState, bootstrapLocationFromProfile } from '@/lib/location-service';
 import { useTranslation } from '@/hooks/useTranslation';
 
 export default function CustomerLoginPage() {
@@ -34,7 +34,7 @@ export default function CustomerLoginPage() {
     setUser({ ...loggedIn, location: null } as unknown as Parameters<typeof setUser>[0]);
     setJourney('customer');
     resetLocationState();
-    requestLiveLocation({ quiet: true, force: true });
+    void bootstrapLocationFromProfile().then(() => requestLiveLocation({ quiet: true, force: false }));
     showToast(`Welcome back, ${loggedIn.name}!`, 'success');
     router.push('/dashboard/customer');
   };

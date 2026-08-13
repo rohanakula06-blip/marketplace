@@ -104,6 +104,9 @@ export default function WorkerRegisterPage() {
       });
       await api.workers.createProfile(user.id, {
         ...profile,
+        location,
+        latitude: coords.lat,
+        longitude: coords.lng,
         serviceAreas: location.split(',')[0],
       });
       const me = await api.auth.me();
