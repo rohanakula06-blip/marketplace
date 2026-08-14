@@ -5,10 +5,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AccountPageShell, AccountCard } from '@/components/account/AccountPageShell';
 import { useAuthStore, useUIStore } from '@/store/app-store';
-import { MapPin, Clock, Briefcase, Calendar, ChevronRight, Loader2, Star, CheckCircle } from 'lucide-react';
+import { MapPin, Clock, Briefcase, Calendar, ChevronRight, Loader2, Star, CheckCircle, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { api, ApiError } from '@/lib/api';
-import { BOOKING_STATUS_LABELS, formatBookingDateTime } from '@/lib/booking-utils';
+import { BOOKING_STATUS_LABELS, formatBookingDateTime, canCustomerRate, canCustomerReport } from '@/lib/booking-utils';
 
 interface Booking {
   id: string;
@@ -22,6 +22,7 @@ interface Booking {
   jobId: string | null;
   customer: { id: string; name: string };
   worker: { id: string; name: string; workerProfile?: { category: string } };
+  reports?: { id: string; reason: string; status: string }[];
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -41,8 +42,10 @@ export default function BookingsPage() {
   const user = useAuthStore((s) => s.user);
   const authReady = useAuthStore((s) => s.authReady);
   const isPro = !!user?.workerProfile;
-  const { setMessageModal, setPaymentModal, setReviewModal, showToast, reviewModal } = useUIStore();
+  const { setMessageModal, setPaymentModal, setReviewModal, setReportModal, showToast, reviewModal, paymentModal, reportModal } = useUIStore();
   const prevReviewOpen = useRef(false);
+  const prevPaymentOpen = useRef(false);
+  const prevReportOpen = useRef(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [role, setRole] = useState<'customer' | 'worker'>(isPro ? 'worker' : 'customer');
   const [loading, setLoading] = useState(true);
@@ -77,6 +80,20 @@ export default function BookingsPage() {
     }
     prevReviewOpen.current = !!reviewModal;
   }, [reviewModal, role, loadBookings]);
+
+  useEffect(() => {
+    if (prevPaymentOpen.current && !paymentModal) {
+      loadBookings(role);
+    }
+    prevPaymentOpen.current = !!paymentModal;
+  }, [paymentModal, role, loadBookings]);
+
+  useEffect(() => {
+    if (prevReportOpen.current && !reportModal) {
+      loadBookings(role);
+    }
+    prevReportOpen.current = !!reportModal;
+  }, [reportModal, role, loadBookings]);
 
   const updateStatus = async (id: string, status: string) => {
     try {
@@ -235,7 +252,7 @@ export default function BookingsPage() {
                       Confirm booking
                     </button>
                   )}
-                  {role === 'customer' && b.status === 'completed' && (
+                  {role === 'customer' && canCustomerRate(b.status) && (
                     <>
                       <button
                         type="button"
@@ -259,10 +276,35 @@ export default function BookingsPage() {
                       </button>
                     </>
                   )}
-                  {role === 'customer' && b.status === 'completed' && (
-                    <button type="button" onClick={() => setPaymentModal(b.id)} className="text-sm px-4 py-2 rounded-xl border border-amber-500/40 text-amber-300 font-medium">
+                  {role === 'customer' && canCustomerRate(b.status) && (
+                    <button
+                      type="button"
+                      onClick={() => setPaymentModal({ bookingId: b.id, price: b.price, service: b.service })}
+                      className="text-sm px-4 py-2 rounded-xl border border-amber-500/40 text-amber-300 font-medium"
+                    >
                       Pay (Demo)
                     </button>
+                  )}
+                  {role === 'customer' && canCustomerReport(b.status, (b.reports?.length ?? 0) > 0) && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setReportModal({
+                          bookingId: b.id,
+                          workerId: b.worker.id,
+                          workerName: b.worker.name,
+                          service: b.service,
+                        })
+                      }
+                      className="text-sm px-4 py-2 rounded-xl border border-red-500/40 text-red-300 hover:bg-red-500/10 font-medium flex items-center gap-1"
+                    >
+                      <AlertTriangle size={14} /> Report professional
+                    </button>
+                  )}
+                  {role === 'customer' && (b.reports?.length ?? 0) > 0 && (
+                    <span className="text-xs px-3 py-2 rounded-xl bg-red-500/15 text-red-300 border border-red-500/25 font-medium flex items-center gap-1">
+                      <AlertTriangle size={12} /> Report submitted
+                    </span>
                   )}
                   {role === 'customer' && b.status === 'reviewed' && b.jobId && (
                     <button type="button" onClick={() => confirmTask(b.id)} className="text-sm px-4 py-2 rounded-xl border border-teal-500/40 text-teal-300 font-medium">

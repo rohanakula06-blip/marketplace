@@ -21,7 +21,7 @@ export const translations: Record<LanguageCode, TranslationTree> = {
       messages: 'Messages',
       myAccount: 'My Account',
       userAccount: 'User Account',
-      proAccount: 'Pro Dashboard',
+      proAccount: 'Dashboard',
       logout: 'Logout',
     },
     hero: {
@@ -149,7 +149,7 @@ export const translations: Record<LanguageCode, TranslationTree> = {
       messages: 'संदेश',
       myAccount: 'मेरा खाता',
       userAccount: 'यूज़र खाता',
-      proAccount: 'प्रो डैशबोर्ड',
+      proAccount: 'डैशबोर्ड',
       logout: 'लॉग आउट',
     },
     hero: {
@@ -277,7 +277,7 @@ export const translations: Record<LanguageCode, TranslationTree> = {
       messages: 'సందేశాలు',
       myAccount: 'నా ఖాతా',
       userAccount: 'యూజర్ ఖాతా',
-      proAccount: 'ప్రో డాష్‌బోర్డ్',
+      proAccount: 'డాష్‌బోర్డ్',
       logout: 'లాగ్ అవుట్',
     },
     hero: {

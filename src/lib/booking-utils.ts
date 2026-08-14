@@ -54,6 +54,23 @@ export function validateBookingSchedule(date: string, time: string): string | nu
   return null;
 }
 
+export function canCustomerRate(status: string): boolean {
+  return status === 'completed' || status === 'paid';
+}
+
+export function canCustomerReport(status: string, alreadyReported: boolean): boolean {
+  return status !== 'cancelled' && !alreadyReported;
+}
+
+export const REPORT_REASONS = [
+  { id: 'no_show', label: 'No show / did not arrive' },
+  { id: 'unprofessional', label: 'Unprofessional behavior' },
+  { id: 'poor_quality', label: 'Poor quality work' },
+  { id: 'overcharging', label: 'Overcharging or hidden fees' },
+  { id: 'safety', label: 'Safety concern' },
+  { id: 'other', label: 'Other' },
+] as const;
+
 export const BOOKING_STATUS_LABELS: Record<string, string> = {
   requested: 'Pending',
   accepted: 'Accepted',

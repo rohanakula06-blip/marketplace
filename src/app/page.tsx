@@ -10,7 +10,7 @@ export default function Home() {
   const user = useAuthStore((s) => s.user);
 
   return (
-    <main className="bg-[#060912]">
+    <main className="bg-teak-50">
       <Navbar />
       <HeroSection />
       {user && <LandingDashboard />}

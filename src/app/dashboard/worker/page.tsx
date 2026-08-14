@@ -11,19 +11,33 @@ import {
   StatTile,
 } from '@/components/account/AccountPageShell';
 import { useAuthStore, useUIStore } from '@/store/app-store';
-import { MapPin, Clock, Briefcase, Loader2, Wifi, WifiOff, Calendar, User } from 'lucide-react';
-import { api } from '@/lib/api';
+import { MapPin, Clock, Briefcase, Loader2, Wifi, WifiOff, Calendar, User, MessageSquare } from 'lucide-react';
+import { api, ApiError } from '@/lib/api';
 import { useDashboardLocation } from '@/hooks/useDashboardLocation';
+import { resolveSearchCoords } from '@/lib/location-service';
+import { BOOKING_STATUS_LABELS, formatBookingDateTime } from '@/lib/booking-utils';
+import { cn } from '@/lib/utils';
+
+interface WorkerBooking {
+  id: string;
+  service: string;
+  description: string | null;
+  date: string;
+  time: string;
+  price: string;
+  status: string;
+  customer: { id: string; name: string };
+}
 
 export default function WorkerDashboard() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
   const authReady = useAuthStore((s) => s.authReady);
-  const { showToast } = useUIStore();
+  const { showToast, setMessageModal } = useUIStore();
   const { coords, location, locationReady, initialized, syncCurrentLocation } = useDashboardLocation();
   const [jobs, setJobs] = useState<Record<string, unknown>[]>([]);
-  const [bookings, setBookings] = useState<Record<string, unknown>[]>([]);
+  const [bookings, setBookings] = useState<WorkerBooking[]>([]);
   const [available, setAvailable] = useState(true);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
@@ -38,12 +52,15 @@ export default function WorkerDashboard() {
   const loadData = useCallback(async () => {
     if (!user || !initialized) return;
     setLoading(true);
+    const searchCoords = (await resolveSearchCoords()) ?? coords;
     const results = await Promise.allSettled([
-      api.jobs.list({ lat: coords.lat, lng: coords.lng, status: 'open' }),
+      api.jobs.list({ lat: searchCoords.lat, lng: searchCoords.lng, status: 'open' }),
       api.bookings.list('worker'),
     ]);
     if (results[0].status === 'fulfilled') setJobs(results[0].value.jobs || []);
-    if (results[1].status === 'fulfilled') setBookings(results[1].value.bookings || []);
+    if (results[1].status === 'fulfilled') {
+      setBookings((results[1].value.bookings || []) as unknown as WorkerBooking[]);
+    }
     setLoading(false);
   }, [user, initialized, coords.lat, coords.lng]);
 
@@ -84,13 +101,27 @@ export default function WorkerDashboard() {
     }
   };
 
+  const updateBookingStatus = async (id: string, status: string) => {
+    try {
+      const data = await api.bookings.update(id, { status });
+      setBookings((prev) =>
+        prev.map((b) => (b.id === id ? { ...b, ...(data.booking as unknown as WorkerBooking) } : b))
+      );
+      showToast(`Booking updated: ${BOOKING_STATUS_LABELS[status] || status}`, 'success');
+      if (status === 'completed') loadData();
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : 'Failed to update booking', 'error');
+    }
+  };
+
   if (!authReady) return <AccountPageShell variant="worker" loading />;
   if (!user) return null;
 
   const profile = user.workerProfile as { category?: string; rating?: number; completedJobs?: number } | null;
   const activeBookings = bookings.filter(
-    (b) => !['reviewed', 'cancelled'].includes(String(b.status))
+    (b) => !['reviewed', 'cancelled', 'paid'].includes(b.status)
   );
+  const pendingRequests = bookings.filter((b) => b.status === 'requested');
 
   return (
     <AccountPageShell variant="worker">
@@ -108,20 +139,21 @@ export default function WorkerDashboard() {
               type="button"
               onClick={toggleAvailability}
               disabled={toggling}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+              className={cn(
+                'inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap',
                 available
-                  ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/30 hover:bg-teal-400'
-                  : 'bg-white/5 text-slate-300 border border-white/15 hover:bg-white/10'
-              }`}
+                  ? 'bg-teal-600 text-white shadow-md shadow-teal-900/25 hover:bg-teal-500'
+                  : 'bg-slate-800 text-slate-300 border border-white/15 hover:bg-slate-700'
+              )}
             >
-              {available ? <Wifi size={18} /> : <WifiOff size={18} />}
+              {available ? <Wifi size={16} /> : <WifiOff size={16} />}
               {toggling ? 'Updating…' : available ? 'Online' : 'Go Online'}
             </button>
-            <Link href="/find-jobs" className="px-5 py-2.5 rounded-xl text-sm font-medium border border-white/15 text-white bg-white/5 hover:bg-white/10">
+            <Link href="/find-jobs" className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium border border-white/15 text-slate-200 bg-slate-800/80 hover:bg-slate-700 whitespace-nowrap">
               Find Work
             </Link>
-            <Link href="/bookings" className="px-5 py-2.5 rounded-xl text-sm font-medium border border-white/15 text-white bg-white/5 hover:bg-white/10">
-              My Bookings
+            <Link href="/bookings" className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium border border-white/15 text-slate-200 bg-slate-800/80 hover:bg-slate-700 whitespace-nowrap">
+              All Bookings
             </Link>
           </>
         }
@@ -135,11 +167,103 @@ export default function WorkerDashboard() {
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-10">
-        <StatTile icon={Briefcase} label="Open jobs nearby" value={jobs.length} accent="teal" />
-        <StatTile icon={Calendar} label="Active bookings" value={activeBookings.length} accent="amber" />
+        <StatTile icon={Calendar} label="Active bookings" value={activeBookings.length} accent="teal" />
+        <StatTile icon={Briefcase} label="Pending requests" value={pendingRequests.length} accent="amber" />
         <StatTile icon={User} label="Jobs completed" value={profile?.completedJobs ?? 0} accent="blue" />
         <StatTile icon={Clock} label="Rating" value={`${profile?.rating ?? 0}★`} accent="yellow" />
       </div>
+
+      <DashboardSection
+        title="Booking Panel"
+        icon={Calendar}
+        accent="teal"
+        action={
+          <Link href="/bookings" className="text-sm text-teal-400 hover:text-teal-300 font-medium">
+            Full panel →
+          </Link>
+        }
+      >
+        {loading ? (
+          <div className="flex items-center gap-2 text-slate-400 py-8">
+            <Loader2 size={18} className="animate-spin" /> Loading bookings…
+          </div>
+        ) : bookings.length === 0 ? (
+          <AccountCard className="p-8 text-center text-slate-400">
+            No bookings yet. Stay online so customers can find and book you.
+          </AccountCard>
+        ) : (
+          <div className="space-y-4">
+            {bookings.slice(0, 8).map((b) => (
+              <AccountCard key={b.id} className="p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="font-semibold text-white capitalize">{b.service}</h4>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-200 border border-teal-500/30 capitalize">
+                        {BOOKING_STATUS_LABELS[b.status] || b.status}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-400 mt-1">Customer: {b.customer.name}</p>
+                    {b.description && <p className="text-sm text-slate-500 mt-1">{b.description}</p>}
+                  </div>
+                  <p className="text-lg font-bold text-amber-400">{b.price}</p>
+                </div>
+                <div className="flex flex-wrap gap-3 text-sm text-slate-500 mb-4">
+                  <span className="flex items-center gap-1">
+                    <Clock size={14} />
+                    {formatBookingDateTime(b.date, b.time)}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-3 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setMessageModal({ userId: b.customer.id, bookingId: b.id })}
+                    className="text-sm px-3 py-2 rounded-xl border border-white/15 text-slate-200 hover:bg-white/10 flex items-center gap-1"
+                  >
+                    <MessageSquare size={14} /> Message
+                  </button>
+                  {b.status === 'requested' && (
+                    <button
+                      type="button"
+                      onClick={() => updateBookingStatus(b.id, 'accepted')}
+                      className="text-sm px-4 py-2 rounded-xl bg-green-600 text-white font-medium"
+                    >
+                      Accept
+                    </button>
+                  )}
+                  {['accepted', 'confirmed'].includes(b.status) && (
+                    <button
+                      type="button"
+                      onClick={() => updateBookingStatus(b.id, 'arriving')}
+                      className="text-sm px-4 py-2 rounded-xl bg-indigo-600 text-white font-medium"
+                    >
+                      On my way
+                    </button>
+                  )}
+                  {['arriving', 'accepted', 'confirmed'].includes(b.status) && (
+                    <button
+                      type="button"
+                      onClick={() => updateBookingStatus(b.id, 'started')}
+                      className="text-sm px-4 py-2 rounded-xl bg-purple-600 text-white font-medium"
+                    >
+                      Start work
+                    </button>
+                  )}
+                  {b.status === 'started' && (
+                    <button
+                      type="button"
+                      onClick={() => updateBookingStatus(b.id, 'completed')}
+                      className="text-sm px-4 py-2 rounded-xl bg-teal-600 text-white font-medium"
+                    >
+                      Mark work complete
+                    </button>
+                  )}
+                </div>
+              </AccountCard>
+            ))}
+          </div>
+        )}
+      </DashboardSection>
 
       <DashboardSection
         title="Jobs Near You"
@@ -161,7 +285,7 @@ export default function WorkerDashboard() {
           </AccountCard>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {jobs.map((job) => (
+            {jobs.slice(0, 3).map((job) => (
               <AccountCard key={String(job.id)} hover className="p-5 flex flex-col">
                 <div className="flex-1">
                   <h4 className="font-semibold text-white">{String(job.title)}</h4>
@@ -182,25 +306,6 @@ export default function WorkerDashboard() {
           </div>
         )}
       </DashboardSection>
-
-      {activeBookings.length > 0 && (
-        <DashboardSection title="Upcoming Bookings" icon={Calendar} accent="teal">
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {activeBookings.slice(0, 6).map((b) => (
-              <AccountCard key={String(b.id)} className="p-4">
-                <p className="font-medium capitalize text-white">{String(b.service)}</p>
-                <p className="text-xs text-slate-400 mt-1">{String(b.date)} · {String(b.time)}</p>
-                <span className="inline-block mt-2 text-xs px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-200 border border-teal-500/30 capitalize">
-                  {String(b.status)}
-                </span>
-              </AccountCard>
-            ))}
-          </div>
-          <Link href="/bookings" className="block text-center text-sm text-teal-400 hover:text-teal-300 mt-4 font-medium">
-            Manage all bookings →
-          </Link>
-        </DashboardSection>
-      )}
     </AccountPageShell>
   );
 }

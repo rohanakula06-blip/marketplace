@@ -156,35 +156,39 @@ export function DashboardHero({
 
   return (
     <div className="mb-10">
-      <div className="inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-medium mb-4 backdrop-blur-sm">
-        <span className={cn('rounded-full border px-3 py-1', badgeClass)}>{badge}</span>
-      </div>
-      <div className="flex flex-wrap items-end justify-between gap-6 mb-6">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-extrabold text-white mb-1">
-            Welcome back,{' '}
-            <span className={cn('text-transparent bg-clip-text bg-gradient-to-r', gradient)}>{name}</span>
-          </h1>
-          <p className="text-slate-400">{subtitle}</p>
-          {location && onRefreshLocation && (
-            <button
-              type="button"
-              onClick={onRefreshLocation}
-              className={cn('mt-2 inline-flex items-center gap-1.5 text-xs', locClass)}
-            >
-              <MapPin size={12} />
-              {location}
-            </button>
-          )}
-        </div>
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-2xl font-bold shadow-lg">
-          <div className={cn('flex h-full w-full items-center justify-center rounded-2xl', avatarClass)}>
-            {avatar}
+      <div className="rounded-2xl border border-white/10 bg-slate-900/50 backdrop-blur-xl p-6 md:p-8 shadow-xl shadow-black/20">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div className="flex items-start gap-4 min-w-0">
+            <div className={cn('flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-xl font-bold shadow-lg', avatarClass)}>
+              {avatar}
+            </div>
+            <div className="min-w-0">
+              <span className={cn('inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold mb-2', badgeClass)}>
+                {badge}
+              </span>
+              <h1 className="text-2xl md:text-3xl font-bold text-white leading-tight">
+                Welcome back,{' '}
+                <span className={cn('text-transparent bg-clip-text bg-gradient-to-r', gradient)}>{name}</span>
+              </h1>
+              <p className="text-slate-400 text-sm mt-1 capitalize">{subtitle}</p>
+              {location && onRefreshLocation && (
+                <button
+                  type="button"
+                  onClick={onRefreshLocation}
+                  className={cn('mt-2 inline-flex items-center gap-1.5 text-xs font-medium', locClass)}
+                >
+                  <MapPin size={12} />
+                  <span className="truncate max-w-[240px]">{location}</span>
+                </button>
+              )}
+            </div>
           </div>
+
+          <div className="flex flex-wrap items-center gap-2 lg:justify-end shrink-0">{actions}</div>
         </div>
+
+        {banner && <div className="mt-5 pt-5 border-t border-white/10">{banner}</div>}
       </div>
-      <div className="flex flex-wrap gap-3 mb-4">{actions}</div>
-      {banner}
     </div>
   );
 }

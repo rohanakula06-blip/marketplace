@@ -44,6 +44,14 @@ export async function GET(req: NextRequest) {
           include: { workerProfile: true },
         },
         job: true,
+        ...(role === 'customer'
+          ? {
+              reports: {
+                where: { customerId: user.id },
+                select: { id: true, reason: true, status: true, createdAt: true },
+              },
+            }
+          : {}),
       },
       orderBy: { createdAt: 'desc' },
     });

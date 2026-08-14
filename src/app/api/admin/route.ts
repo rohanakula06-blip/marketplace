@@ -14,7 +14,7 @@ export async function GET() {
     prisma.job.count(),
     prisma.booking.count(),
     prisma.workerProfile.count({ where: { verificationStatus: 'pending' } }),
-    prisma.notification.count({ where: { type: 'report' } }),
+    prisma.report.count({ where: { status: 'pending' } }),
   ]);
 
   return NextResponse.json({

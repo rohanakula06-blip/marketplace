@@ -1,27 +1,32 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { X, Loader2, CreditCard, Smartphone, Banknote } from 'lucide-react';
 import { useUIStore } from '@/store/app-store';
+import { api, ApiError } from '@/lib/api';
 
 export function PaymentModal() {
   const { paymentModal, setPaymentModal, showToast } = useUIStore();
+  const router = useRouter();
   const [method, setMethod] = useState('upi');
   const [loading, setLoading] = useState(false);
 
   if (!paymentModal) return null;
 
+  const { bookingId, price, service } = paymentModal;
+
   const pay = async () => {
     setLoading(true);
-    const res = await fetch('/api/payments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bookingId: paymentModal, amount: '₹750', method }),
-    });
-    setLoading(false);
-    if (res.ok) {
+    try {
+      await api.payments.create({ bookingId, amount: price, method });
       showToast('Demo payment completed!', 'success');
       setPaymentModal(null);
+      router.refresh();
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : 'Payment failed', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -46,12 +51,12 @@ export function PaymentModal() {
         </div>
 
         <div className="glass rounded-xl p-4 mb-6 text-sm">
-          <div className="flex justify-between mb-2"><span className="text-slate-500">Service</span><span className="text-slate-900">Electrical Repair</span></div>
-          <div className="flex justify-between font-bold text-slate-900"><span>Total</span><span className="text-amber-600">₹750</span></div>
+          <div className="flex justify-between mb-2"><span className="text-slate-500">Service</span><span className="text-slate-900 capitalize">{service}</span></div>
+          <div className="flex justify-between font-bold text-slate-900"><span>Total</span><span className="text-amber-600">{price}</span></div>
         </div>
 
         <button onClick={pay} disabled={loading} className="btn-gold w-full flex items-center justify-center gap-2">
-          {loading && <Loader2 size={16} className="animate-spin" />} Pay ₹750 (Demo)
+          {loading && <Loader2 size={16} className="animate-spin" />} Pay {price} (Demo)
         </button>
       </div>
     </div>

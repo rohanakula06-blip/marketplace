@@ -37,6 +37,8 @@ model User {
   notifications   Notification[]
   sessions        Session[]
   passwordResets  PasswordReset[]
+  reportsFiled    Report[]         @relation("ReportsFiled")
+  reportsReceived Report[]         @relation("ReportsReceived")
 
   @@index([role])
   @@index([location])
@@ -168,9 +170,30 @@ model Booking {
   reviews  Review[]
   messages Message[]
   payments Payment[]
+  reports  Report[]
 
   @@index([status])
   @@map("bookings")
+}
+
+model Report {
+  id         String   @id @default(cuid())
+  bookingId  String   @map("booking_id")
+  customerId String   @map("customer_id")
+  workerId   String   @map("worker_id")
+  reason     String
+  details    String?
+  status     String   @default("pending")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  booking  Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  customer User    @relation("ReportsFiled", fields: [customerId], references: [id], onDelete: Cascade)
+  worker   User    @relation("ReportsReceived", fields: [workerId], references: [id], onDelete: Cascade)
+
+  @@unique([bookingId, customerId])
+  @@index([workerId])
+  @@index([status])
+  @@map("reports")
 }
 
 model Review {

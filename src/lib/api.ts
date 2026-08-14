@@ -154,6 +154,14 @@ export const api = {
       }),
   },
 
+  reports: {
+    create: (data: { bookingId: string; workerId: string; reason: string; details?: string }) =>
+      request<{ report: Record<string, unknown> }>('/api/reports', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+  },
+
   applications: {
     create: (data: Record<string, unknown>) =>
       request<{ application: Record<string, unknown> }>('/api/applications', {
