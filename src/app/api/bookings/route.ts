@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { DEFAULT_LOCATION, DEMO_COORDS } from '@/lib/constants';
 
 const WORKER_NEXT: Record<string, string[]> = {
   requested: ['accepted', 'cancelled'],
@@ -72,6 +73,20 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
 
+  // Validate required fields
+  if (!body.workerId) {
+    return NextResponse.json({ error: 'Worker ID is required' }, { status: 400 });
+  }
+  if (!body.service) {
+    return NextResponse.json({ error: 'Service is required' }, { status: 400 });
+  }
+  if (!body.date) {
+    return NextResponse.json({ error: 'Date is required' }, { status: 400 });
+  }
+  if (!body.time) {
+    return NextResponse.json({ error: 'Time is required' }, { status: 400 });
+  }
+
   const workerProfile = await prisma.workerProfile.findUnique({
     where: { userId: body.workerId },
   });
@@ -85,11 +100,35 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // If jobId is not provided, create a new job
+  let jobId: string;
+  if (!body.jobId) {
+    const job = await prisma.job.create({
+      data: {
+        customerId: user.id,
+        title: body.title || 'Untitled Job',
+        category: body.category || 'other',
+        description: body.description || 'No description',
+        location: body.location || user.location || DEFAULT_LOCATION,
+        latitude: body.latitude || DEMO_COORDS.lat,
+        longitude: body.longitude || DEMO_COORDS.lng,
+        budget: body.budget || '0',
+        date: body.date,
+        time: body.time,
+        urgency: body.urgency || 'normal',
+        photoUrl: body.photoUrl,
+      },
+    });
+    jobId = job.id;
+  } else {
+    jobId = body.jobId;
+  }
+
   const booking = await prisma.booking.create({
     data: {
       customerId: user.id,
       workerId: body.workerId,
-      jobId: body.jobId,
+      jobId,
       service: body.service,
       description: body.description,
       date: body.date,

@@ -8,15 +8,6 @@ const MAX_OTP_PER_HOUR = 5;
 
 export async function POST(req: NextRequest) {
   try {
-    if (!isEmailConfigured()) {
-      return NextResponse.json(
-        {
-          error: 'Email not configured. Add SMTP or RESEND_API_KEY to .env. See EMAIL_SETUP.md',
-          ...getEmailProviderStatus(),
-        },
-        { status: 503 }
-      );
-    }
 
     const { email } = await req.json();
     if (!email) {

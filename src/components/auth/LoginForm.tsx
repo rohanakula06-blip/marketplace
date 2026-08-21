@@ -331,7 +331,7 @@ export function LoginForm({ variant, journey, onSuccess, footer, theme = 'light'
               <button
                 type="button"
                 onClick={sendEmailOtp}
-                disabled={loading || !emailStatus?.configured}
+                disabled={loading}
                 className={cn(
                   'w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold disabled:opacity-50',
                   btnClass
@@ -427,7 +427,7 @@ export function LoginForm({ variant, journey, onSuccess, footer, theme = 'light'
               <button
                 type="button"
                 onClick={sendPhoneOtp}
-                disabled={loading || phone.length < 10 || !smsStatus?.configured}
+                disabled={loading || phone.length < 10}
                 className={cn(
                   'w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold disabled:opacity-50',
                   btnClass

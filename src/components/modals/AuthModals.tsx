@@ -200,7 +200,7 @@ export function AuthModals() {
                   <input type="email" placeholder="your.email@gmail.com" value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                     className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm" />
-                  <button onClick={sendEmailOtp} disabled={loading || !emailStatus?.configured}
+                  <button onClick={sendEmailOtp} disabled={loading}
                     className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50">
                     {loading ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
                     Send Code to Email
@@ -296,7 +296,7 @@ export function AuthModals() {
                     onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
                     className="w-full rounded-xl border border-slate-200 pl-14 pr-4 py-3 text-sm" />
                 </div>
-                <button onClick={sendPhoneOtp} disabled={loading || form.phone.length < 10 || !smsStatus?.configured}
+                <button onClick={sendPhoneOtp} disabled={loading || form.phone.length < 10}
                   className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50">
                   {loading ? <Loader2 size={16} className="animate-spin" /> : <Smartphone size={16} />}
                   Send OTP to Mobile

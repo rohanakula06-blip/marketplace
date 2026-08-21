@@ -9,15 +9,6 @@ const MAX_OTP_PER_HOUR = 5;
 export async function POST(req: NextRequest) {
   try {
     const status = getSmsProviderStatus();
-    if (!status.configured) {
-      return NextResponse.json(
-        {
-          error: 'Real SMS is not configured yet. Add FAST2SMS_API_KEY to your .env file. See SMS_SETUP.md for free setup (takes 5 minutes).',
-          providers: status.providers,
-        },
-        { status: 503 }
-      );
-    }
 
     const { phone } = await req.json();
 
